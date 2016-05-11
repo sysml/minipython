@@ -1,0 +1,8 @@
+kernel = "/root/workspace/mini-python/minios/build/mini-python_x86_64.gz"
+memory = "128"
+vcpus = "1"
+name = "minipython"
+
+on_poweroff = "preserve"
+on_crash = "preserve"
+on_reboot = "preserve"
