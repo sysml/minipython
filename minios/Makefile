@@ -8,6 +8,23 @@ QSTR_GEN_EXTRA_CFLAGS += -I$(BUILD)/tmp
 
 MICROPY_FORCE_32BIT = 0
 
+## vif
+CONFIG_NETFRONT          = y
+CONFIG_NETFRONT_PERSISTENT_GRANTS ?= y
+CONFIG_NETFRONT_GSO              ?= y
+CONFIG_NETFRONT_POLL             = n
+CONFIG_NETFRONT_POLLTIMEOUT      = 1
+CONFIG_NETFRONT_WAITFORTX       ?= y
+CONFIG_NETFRONT_LWIP_ONLY       ?= y
+
+## lwip
+CONFIG_LWIP                      = y
+CONFIG_LWIP_MINIMAL              = y
+CONFIG_LWIP_NOTHREADS            = n
+CONFIG_LWIP_HEAP_ONLY           ?= n
+CONFIG_LWIP_POOLS_ONLY           = n
+CONFIG_START_NETWORK             = n
+
 ######################################################################
 # Mini-OS definitions
 ######################################################################
@@ -31,7 +48,10 @@ STUB_CFLAGS      += -Iinc \
                    -I.. \
                    -I../lib/mp-readline \
                    -I../stmhal \
-                   -I$(BUILD)
+                   -I$(BUILD) \
+		   -I../lib/netutils
+
+#STUB_CFLAGS += -DMICROPY_PY_LWIP=1
 
 STUB_APP_OBJS0  := main.o \
 		   unix_mphal.o \
@@ -43,9 +63,11 @@ STUB_APP_OBJS0  := main.o \
                    ../lib/mp-readline/readline.o \
                    _frozen_mpy.o
 
+STUB_APP_OBJS0 += ../extmod/modlwip.o ../lib/netutils/netutils.o
+
 STUB_APP_OBJS0 += $(addprefix ../py/, $(PY_O_BASENAME))
 
-STUB_BUILD_DIRS	+= $(STUBDOM_BUILD_DIR)/lib/utils $(STUBDOM_BUILD_DIR)/lib/libc $(STUBDOM_BUILD_DIR)/lib/mp-readline $(STUBDOM_BUILD_DIR)/build $(STUBDOM_BUILD_DIR)/py $(STUBDOM_BUILD_DIR)/extmod
+STUB_BUILD_DIRS	+= $(STUBDOM_BUILD_DIR)/lib/utils $(STUBDOM_BUILD_DIR)/lib/libc $(STUBDOM_BUILD_DIR)/lib/mp-readline $(STUBDOM_BUILD_DIR)/build $(STUBDOM_BUILD_DIR)/py $(STUBDOM_BUILD_DIR)/extmod $(STUBDOM_BUILD_DIR)/lib/netutils
 
 
 include $(MINIOS_ROOT)/stub.mk

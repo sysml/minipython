@@ -1178,14 +1178,16 @@ STATIC mp_obj_t mod_lwip_reset() {
 }
 MP_DEFINE_CONST_FUN_OBJ_0(mod_lwip_reset_obj, mod_lwip_reset);
 
+/*
 STATIC mp_obj_t mod_lwip_callback() {
     if (lwip_poll_list.poll != NULL) {
         lwip_poll_list.poll(lwip_poll_list.poll_arg);
     }
     sys_check_timeouts();
     return mp_const_none;
-}
-MP_DEFINE_CONST_FUN_OBJ_0(mod_lwip_callback_obj, mod_lwip_callback);
+    }*/
+
+//MP_DEFINE_CONST_FUN_OBJ_0(mod_lwip_callback_obj, mod_lwip_callback);
 
 typedef struct _getaddrinfo_state_t {
     volatile int status;

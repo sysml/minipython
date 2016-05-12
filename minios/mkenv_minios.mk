@@ -151,9 +151,36 @@ PY_O_BASENAME = \
 	../extmod/vfs_fat_misc.o \
 	../extmod/moduos_dupterm.o \
 
+LWIP_ROOT ?= $(realpath ../../toolchain)/x86_64-root/x86_64-xen-elf
+SRC_MOD += ../extmod/modlwip.c ../lib/netutils/netutils.c
+SRC_MOD += $(addprefix $(LWIP_ROOT)/src/lwip/,\
+	core/def.c \
+        core/dns.c \
+        core/init.c \
+	core/mem.c \
+        core/memp.c \
+        core/netif.c \
+        core/pbuf.c \
+        core/raw.c \
+	core/stats.c \
+        core/sys.c \
+        core/tcp.c \
+        core/tcp_in.c \
+	core/tcp_out.c \
+        core/timers.c \
+        core/udp.c \
+	core/ipv4/autoip.c \
+        core/ipv4/icmp.c \
+        core/ipv4/igmp.c \
+        core/ipv4/ip4_addr.c \
+        core/ipv4/ip4.c \
+        core/ipv4/ip_frag.c \
+        )
 
 # prepend the build destination prefix to the py object files
 PY_O = $(addprefix $(PY_BUILD)/, $(PY_O_BASENAME))
+
+#$(info $(SRC_MOD))
 
 # Sources that may contain qstrings
 SRC_QSTR_IGNORE = nlr% emitnx% emitnthumb% emitnarm%
