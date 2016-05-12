@@ -1259,7 +1259,7 @@ MP_DEFINE_CONST_FUN_OBJ_0(lwip_print_pcbs_obj, lwip_print_pcbs);
 STATIC const mp_map_elem_t mp_module_lwip_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__), MP_OBJ_NEW_QSTR(MP_QSTR_lwip) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_reset), (mp_obj_t)&mod_lwip_reset_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_callback), (mp_obj_t)&mod_lwip_callback_obj },
+    //    { MP_OBJ_NEW_QSTR(MP_QSTR_callback), (mp_obj_t)&mod_lwip_callback_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_getaddrinfo), (mp_obj_t)&lwip_getaddrinfo_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_print_pcbs), (mp_obj_t)&lwip_print_pcbs_obj },
     // objects
