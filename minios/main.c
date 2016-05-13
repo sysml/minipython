@@ -263,7 +263,9 @@ MP_NOINLINE int main_(int argc, char **argv) {
 
     mp_init();
     //    do_str("print('hello world!')");
-    do_str("import lwip\nlwip.reset()\n");    
+    //    do_str("import lwip\nlwip.reset()\nprint('done!!!!')\n");    
+    //    do_str("import lwip\nlwip.reset()\nlwip.netif_add()\n");
+    do_str("import lwip\nlwip.reset()\nlwip.netifadd()\nwhile 1: lwip.poll()\nprint('done!!!!')\n");    
     mp_deinit();
 
 #if MICROPY_ENABLE_GC && !defined(NDEBUG)

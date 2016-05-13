@@ -20,7 +20,7 @@ CONFIG_NETFRONT_LWIP_ONLY       ?= y
 ## lwip
 CONFIG_LWIP                      = y
 CONFIG_LWIP_MINIMAL              = y
-CONFIG_LWIP_NOTHREADS            = n
+CONFIG_LWIP_NOTHREADS            = y
 CONFIG_LWIP_HEAP_ONLY           ?= n
 CONFIG_LWIP_POOLS_ONLY           = n
 CONFIG_START_NETWORK             = n
@@ -38,6 +38,7 @@ NEWLIB_ROOT             ?= $(TOOLCHAIN_ROOT)/$(ARCH)-root/x86_64-xen-elf
 LWIP_ROOT               ?= $(TOOLCHAIN_ROOT)/$(ARCH)-root/x86_64-xen-elf
 GCC_VERSION             ?= 4.9
 verbose                 ?=
+debug                   ?= y
 CC = gcc
 CPP = gcc
 
@@ -49,7 +50,10 @@ STUB_CFLAGS      += -Iinc \
                    -I../lib/mp-readline \
                    -I../stmhal \
                    -I$(BUILD) \
-		   -I../lib/netutils
+		   -I../lib/netutils \
+		   -DLWIP_IF_DEBUG \
+		   -DLWIP_SERVICE_DEBUG \
+		   -DLWIP_IP_DEBUG
 
 #STUB_CFLAGS += -DMICROPY_PY_LWIP=1
 

@@ -44,6 +44,9 @@
 //#include "lwip/raw.h"
 #include "lwip/dns.h"
 #include "lwip/tcp_impl.h"
+#include "lwip/netif.h"
+#include "lwip/inet.h"
+#include <mini-os/lwip-net.h>
 
 #if 0 // print debugging info
 #define DEBUG_printf DEBUG_printf
@@ -1168,8 +1171,43 @@ void mod_lwip_deregister_poll(void (* poll)(void *arg), void *poll_arg) {
     lwip_poll_list.poll = NULL;
 }
 
+
+/**
+ * ARGUMENT PARSING
+ */
+struct mcargs {
+  struct eth_addr mac;
+  struct netif    netif;  
+  ip4_addr_t      ip;
+  ip4_addr_t      mask;
+  ip4_addr_t      gw;
+  #if LWIP_DNS
+  ip4_addr_t      dns0;
+  ip4_addr_t      dns1;
+  #endif
+} args;
+
+
 /******************************************************************************/
 // The lwip global functions.
+STATIC mp_obj_t mod_lwip_netifadd() {
+  struct netif *niret;
+  
+  IP4_ADDR(&args.ip,   172, 64, 0, 100);
+  IP4_ADDR(&args.mask, 255, 255, 255, 252);
+  IP4_ADDR(&args.gw,     0,   0,   0,   0);
+  
+  niret = netif_add(&args.netif, &args.ip, &args.mask, &args.gw, NULL,
+		    netfrontif_init, ethernet_input);
+  netif_set_default(&args.netif);
+  netif_set_up(&args.netif);
+}
+MP_DEFINE_CONST_FUN_OBJ_0(mod_lwip_netifadd_obj, mod_lwip_netifadd);
+
+STATIC mp_obj_t mod_lwip_poll() {
+  netfrontif_poll(&args.netif);
+}
+MP_DEFINE_CONST_FUN_OBJ_0(mod_lwip_poll_obj, mod_lwip_poll);
 
 STATIC mp_obj_t mod_lwip_reset() {
     lwip_init();
@@ -1262,6 +1300,8 @@ STATIC const mp_map_elem_t mp_module_lwip_globals_table[] = {
     //    { MP_OBJ_NEW_QSTR(MP_QSTR_callback), (mp_obj_t)&mod_lwip_callback_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_getaddrinfo), (mp_obj_t)&lwip_getaddrinfo_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_print_pcbs), (mp_obj_t)&lwip_print_pcbs_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_netifadd), (mp_obj_t)&mod_lwip_netifadd_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_poll), (mp_obj_t)&mod_lwip_poll_obj },        
     // objects
     { MP_OBJ_NEW_QSTR(MP_QSTR_socket), (mp_obj_t)&lwip_socket_type },
 #ifdef MICROPY_PY_LWIP_SLIP
