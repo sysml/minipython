@@ -93,6 +93,16 @@ STATIC int handle_uncaught_exception(mp_obj_base_t *exc) {
     return 1;
 }
 
+typedef struct _mp_lexer_file_buf_t {
+  SHFS_FD f;
+  byte buf[20];
+  uint16_t len;
+  uint16_t pos;
+  uint64_t fpos;
+  uint64_t fsize;
+} mp_lexer_file_buf_t;
+
+
 // Returns standard error codes: 0 for success, 1 for all other errors,
 // except if FORCED_EXIT bit is set then script raised SystemExit and the
 // value of the exit is in the lower 8 bits of the return value
@@ -150,6 +160,71 @@ STATIC int execute_from_lexer(mp_lexer_t *lex, mp_parse_input_kind_t input_kind,
 #include "lib/mp-readline/readline.h"
 #else
 #endif
+
+STATIC mp_uint_t file_buf_next_byte(mp_lexer_file_buf_t *fb) {
+  uint64_t rlen;
+  int ret;
+
+  if (fb->pos >= fb->len) {
+    rlen = sizeof(fb->buf) + fb->fpos > fb->fsize ? fb->fsize - fb->fpos : sizeof(fb->buf);
+    if (rlen == 0) return MP_LEXER_EOF;
+    
+    ret = shfs_fio_read(fb->f, fb->fpos, &fb->buf, rlen);
+    fb->len = rlen;
+    fb->pos = 0;
+    fb->fpos += rlen;
+  }
+  return fb->buf[fb->pos++];  
+  /*
+    if (fb->len < sizeof(fb->buf)) {
+      return MP_LEXER_EOF;
+    } else {
+      UINT n;
+      f_read(&fb->fp, fb->buf, sizeof(fb->buf), &n);
+      if (n == 0) {
+	return MP_LEXER_EOF;
+      }
+      fb->len = n;
+      fb->pos = 0;
+    }
+    }*/
+
+}
+
+
+
+STATIC void file_buf_close(mp_lexer_file_buf_t *fb) {
+  shfs_fio_close(fb->f);
+  m_del_obj(mp_lexer_file_buf_t, fb);
+}
+
+mp_lexer_t *mp_lexer_new_from_file(const char *filename) {
+
+  //  int id = 51712;
+  //  char buf[1024];
+  uint64_t rlen;
+  int ret = 0;
+    
+  mp_lexer_file_buf_t *fb = m_new_obj_maybe(mp_lexer_file_buf_t);
+
+  if (fb == NULL)  return NULL;
+
+  fb->f = shfs_fio_open(filename);
+  if (!fb->f) {
+    printk("%s: Could not open: %s\n", filename, strerror(errno));
+    return NULL;
+  }
+
+  shfs_fio_size(fb->f, &fb->fsize);
+  rlen = sizeof(fb->buf) > fb->fsize ? fb->fsize : sizeof(fb->buf);
+  ret = shfs_fio_read(fb->f, 0, &fb->buf, rlen);
+  
+  fb->len = rlen;
+  fb->fpos = rlen;
+  fb->pos = 0;
+  
+  return mp_lexer_new(qstr_from_str(filename), fb, (mp_lexer_stream_next_byte_t)file_buf_next_byte, (mp_lexer_stream_close_t)file_buf_close);
+}
 
 STATIC int do_str(const char *str) {
     mp_lexer_t *lex = mp_lexer_new_from_str_len(MP_QSTR__lt_stdin_gt_, str, strlen(str), false);
@@ -259,12 +334,17 @@ int main(int argc, char **argv) {
 }
 
 MP_NOINLINE int main_(int argc, char **argv) {
-    int id = 51712;
+  /*
+
     char buf[1024];
     uint64_t fsize, left, cur, dlen, plen;
     unsigned int i;
     SHFS_FD f;
+
+  */
+
     int ret = 0;
+    int id = 51712;
     
   mp_stack_set_limit(40000 * (BYTES_PER_WORD / 4));
 
@@ -281,43 +361,8 @@ MP_NOINLINE int main_(int argc, char **argv) {
     ret = mount_shfs(&id, 1);   
     if (ret < 0) return 0;
 
-    f = shfs_fio_open("main.py");
-    if (!f) {
-      printk("%s: Could not open: %s\n", "main.py", strerror(errno));
-      return -1;
-    }
-
-    shfs_fio_size(f, &fsize);
-
-    left = fsize;
-    cur = 0;
-    while (left) {
-      dlen = min(left, sizeof(buf) - 1);
-
-      ret = shfs_fio_cache_read(f, cur, buf, dlen);
-      if (ret < 0) {
-	printk("%s: Read error: %s\n", "main.py", strerror(-ret));
-	shfs_fio_close(f);
-	return 0;
-      }
-      buf[dlen] = '\0'; /* set terminating character for fprintf */
-      plen = 0;
-      while (plen < dlen) {
-	plen += printf("%s", buf + plen);
-	if (plen < dlen) {
-	  /* terminating character found earlier than expected
-	   * continue printing after this character */
-	  ++plen;
-	}
-      }
-      //      fflush(cio);
-      left -= dlen;
-      cur += dlen;
-    }
-    shfs_fio_close(f);
-    
-    
-    do_str("import lwip\nlwip.reset()\nlwip.netifadd('172.64.0.100', '255.255.255.0', '0.0.0.0')\nwhile 1: lwip.poll()\nprint('done!!!!')\n");
+    do_file("main.py");    
+    //    do_str("import lwip\nlwip.reset()\nlwip.netifadd('172.64.0.100', '255.255.255.0', '0.0.0.0')\nwhile 1: lwip.poll()\nprint('done!!!!')\n");
     
     mp_deinit();
 

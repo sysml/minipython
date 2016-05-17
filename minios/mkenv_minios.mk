@@ -42,7 +42,6 @@ PY_O_BASENAME = \
 	mpz.o \
 	lexer.o \
 	lexerstr.o \
-	lexerunix.o \
 	parse.o \
 	scope.o \
 	compile.o \
@@ -143,13 +142,15 @@ PY_O_BASENAME = \
 	../extmod/modwebrepl.o \
 	../extmod/modframebuf.o \
 	../extmod/fsusermount.o \
-	../extmod/vfs_fat.o \
+	../extmod/moduos_dupterm.o
+
+#	../extmod/vfs_fat.o \
 	../extmod/vfs_fat_ffconf.o \
 	../extmod/vfs_fat_diskio.o \
 	../extmod/vfs_fat_file.o \
 	../extmod/vfs_fat_lexer.o \
 	../extmod/vfs_fat_misc.o \
-	../extmod/moduos_dupterm.o \
+
 
 LWIP_ROOT ?= $(realpath ../../toolchain)/x86_64-root/x86_64-xen-elf
 SRC_MOD += ../extmod/modlwip.c ../lib/netutils/netutils.c
