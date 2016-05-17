@@ -51,7 +51,7 @@ STUB_CFLAGS      += -Iinc \
                    -I../stmhal \
                    -I$(BUILD) \
 		   -I../lib/netutils \
-		   -DLWIP_IF_DEBUG \
+#		   -DLWIP_IF_DEBUG \
 		   -DLWIP_SERVICE_DEBUG \
 		   -DLWIP_IP_DEBUG
 

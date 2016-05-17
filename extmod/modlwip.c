@@ -1194,7 +1194,7 @@ STATIC mp_obj_t mod_lwip_netifadd() {
   struct netif *niret;
   
   IP4_ADDR(&args.ip,   172, 64, 0, 100);
-  IP4_ADDR(&args.mask, 255, 255, 255, 252);
+  IP4_ADDR(&args.mask, 255, 255, 255, 0);
   IP4_ADDR(&args.gw,     0,   0,   0,   0);
   
   niret = netif_add(&args.netif, &args.ip, &args.mask, &args.gw, NULL,
