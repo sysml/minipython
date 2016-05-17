@@ -4,7 +4,7 @@ vcpus = "1"
 name = "minipython"
 
 vif  = [ 'mac=00:11:22:33:44:55,bridge=vhostonly0' ]
-disk = [ 'file:/root/workspace/minicache/scripts/pythonsrcs.shfs,xvda,w']
+disk = [ 'file:/root/workspace/mini-python/minios/minipython-volume.shfs,xvda,w']
 
 on_poweroff = "preserve"
 on_crash = "preserve"

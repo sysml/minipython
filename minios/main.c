@@ -361,7 +361,7 @@ MP_NOINLINE int main_(int argc, char **argv) {
     ret = mount_shfs(&id, 1);   
     if (ret < 0) return 0;
 
-    do_file("main.py");    
+    do_file("");    
     //    do_str("import lwip\nlwip.reset()\nlwip.netifadd('172.64.0.100', '255.255.255.0', '0.0.0.0')\nwhile 1: lwip.poll()\nprint('done!!!!')\n");
     
     mp_deinit();
