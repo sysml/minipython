@@ -51,6 +51,10 @@ STUB_CFLAGS      += -Iinc \
                    -I../stmhal \
                    -I$(BUILD) \
 		   -I../lib/netutils \
+		   -DSHFS_OPENBYNAME \
+                   -DSHFS_CACHE_READAHEAD=8 \
+		   -DSHFS_CACHE_GROW
+
 #		   -DLWIP_IF_DEBUG \
 		   -DLWIP_SERVICE_DEBUG \
 		   -DLWIP_IP_DEBUG
@@ -67,11 +71,21 @@ STUB_APP_OBJS0  := main.o \
                    ../lib/mp-readline/readline.o \
                    _frozen_mpy.o
 
+STUB_APP_OBJS0  += shfs/blkdev.o      \
+                   shfs/debug.o       \
+                   shfs/mempool.o     \
+                   shfs/htable.o      \
+                   shfs/ring.o        \
+                   shfs/shfs.o        \
+                   shfs/shfs_cache.o  \
+                   shfs/shfs_check.o  \
+                   shfs/shfs_fio.o    
+
 STUB_APP_OBJS0 += ../extmod/modlwip.o ../lib/netutils/netutils.o
 
 STUB_APP_OBJS0 += $(addprefix ../py/, $(PY_O_BASENAME))
 
-STUB_BUILD_DIRS	+= $(STUBDOM_BUILD_DIR)/lib/utils $(STUBDOM_BUILD_DIR)/lib/libc $(STUBDOM_BUILD_DIR)/lib/mp-readline $(STUBDOM_BUILD_DIR)/build $(STUBDOM_BUILD_DIR)/py $(STUBDOM_BUILD_DIR)/extmod $(STUBDOM_BUILD_DIR)/lib/netutils
+STUB_BUILD_DIRS	+= $(STUBDOM_BUILD_DIR)/lib/utils $(STUBDOM_BUILD_DIR)/lib/libc $(STUBDOM_BUILD_DIR)/lib/mp-readline $(STUBDOM_BUILD_DIR)/build $(STUBDOM_BUILD_DIR)/py $(STUBDOM_BUILD_DIR)/extmod $(STUBDOM_BUILD_DIR)/lib/netutils $(STUBDOM_BUILD_DIR)/$(STUBDOM_NAME)/shfs
 
 
 include $(MINIOS_ROOT)/stub.mk

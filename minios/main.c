@@ -36,6 +36,8 @@
 #include <sys/types.h>
 #include <errno.h>
 
+#include "shfs/shfs.h"
+#include "shfs/shfs_fio.h"
 #include "py/mpstate.h"
 #include "py/nlr.h"
 #include "py/compile.h"
@@ -154,6 +156,11 @@ STATIC int do_str(const char *str) {
     return execute_from_lexer(lex, MP_PARSE_FILE_INPUT, false);
 }
 
+STATIC int do_file(const char *file) {
+  mp_lexer_t *lex = mp_lexer_new_from_file(file);
+  return execute_from_lexer(lex, MP_PARSE_FILE_INPUT, false);
+}
+
 STATIC int usage(char **argv) {
     printf(
 "usage: %s [<opts>] [-X <implopt>] [-c <command>] [<filename>]\n"
@@ -252,7 +259,14 @@ int main(int argc, char **argv) {
 }
 
 MP_NOINLINE int main_(int argc, char **argv) {
-    mp_stack_set_limit(40000 * (BYTES_PER_WORD / 4));
+    int id = 51712;
+    char buf[1024];
+    uint64_t fsize, left, cur, dlen, plen;
+    unsigned int i;
+    SHFS_FD f;
+    int ret = 0;
+    
+  mp_stack_set_limit(40000 * (BYTES_PER_WORD / 4));
 
     pre_process_options(argc, argv);
 
@@ -262,6 +276,47 @@ MP_NOINLINE int main_(int argc, char **argv) {
 #endif
 
     mp_init();
+
+    init_shfs();
+    ret = mount_shfs(&id, 1);   
+    if (ret < 0) return 0;
+
+    f = shfs_fio_open("main.py");
+    if (!f) {
+      printk("%s: Could not open: %s\n", "main.py", strerror(errno));
+      return -1;
+    }
+
+    shfs_fio_size(f, &fsize);
+
+    left = fsize;
+    cur = 0;
+    while (left) {
+      dlen = min(left, sizeof(buf) - 1);
+
+      ret = shfs_fio_cache_read(f, cur, buf, dlen);
+      if (ret < 0) {
+	printk("%s: Read error: %s\n", "main.py", strerror(-ret));
+	shfs_fio_close(f);
+	return 0;
+      }
+      buf[dlen] = '\0'; /* set terminating character for fprintf */
+      plen = 0;
+      while (plen < dlen) {
+	plen += printf("%s", buf + plen);
+	if (plen < dlen) {
+	  /* terminating character found earlier than expected
+	   * continue printing after this character */
+	  ++plen;
+	}
+      }
+      //      fflush(cio);
+      left -= dlen;
+      cur += dlen;
+    }
+    shfs_fio_close(f);
+    
+    
     do_str("import lwip\nlwip.reset()\nlwip.netifadd('172.64.0.100', '255.255.255.0', '0.0.0.0')\nwhile 1: lwip.poll()\nprint('done!!!!')\n");
     
     mp_deinit();

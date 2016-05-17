@@ -27,6 +27,7 @@ Then create the VM with:
 
 
 
-
-
+./mkwebfs ~/workspace/mini-python/minios/pythonsrcs/ pythonsrcs.shfs
+/local/domain/0/backend/qdisk/166/51712
+xenstore-ls
 

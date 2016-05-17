@@ -1,0 +1,303 @@
+#!/bin/bash
+WWWDIR="$1"
+SHFSIMG="$2"
+IFSORIG=$IFS
+NL=$'\n'
+CSIZE=4096
+NB_BKTS=1024
+E_PER_BKT=16
+ESIZE=256
+
+SHFS_MKFS=${SHFS_MKFS:-"../shfs-tools/shfs_mkfs"}
+SHFS_ADMIN=${SHFS_ADMIN:-"../shfs-tools/shfs_admin"}
+
+function usage() {
+    echo "Usage: $0 [WWWDIR] [SHFSOUT]"
+}
+
+function get_hash() {
+    # 128 bits hash of passed string
+    printf "%s" "$1" | sha1sum | awk '{ print $1 }'
+}
+
+function str_tolower()
+{
+	local STR=$1
+	printf "%s" "${STR,,}"
+}
+
+function str_fileext()
+{
+    # contains string an file extension part?
+    local STR=$1
+    local LEN=${#STR}
+    local I=
+
+    for (( I=LEN-1; I>0; I-- )); do
+	if [ "${STR:$I:1}" = "." ]; then
+	    # yes -> cut / give me the last extension
+	    local P=$(( I + 1 ))
+	    local L=$(( LEN - P ))
+	    printf "%s" "${STR:$P:$L}"
+	    return
+	fi
+    done
+    printf "%s" ""
+}
+
+function get_mime() {
+    local FEXT="$( str_tolower "$( str_fileext "$1" )" )"
+    local MIME=
+
+    case "$FEXT" in
+	"shtml"|"html"|"htm")
+	    MIME="text/html"
+	    ;;
+	"js")
+	    MIME="text/javascript"
+	    ;;
+	"css")
+	    MIME="text/css"
+	    ;;
+	"xml")
+	    MIME="application/xml"
+	    ;;
+	"text"|"txt"|"md"|"asc")
+	    MIME="text/plain"
+	    ;;
+	"rtf")
+	    MIME="text/rtf"
+	    ;;
+	"odg")
+	    MIME="application/vnd.oasis.opendocument.graphics"
+	    ;;
+	"pdf")
+	    MIME="application/pdf"
+	    ;;
+	"ps"|"eps"|"ai")
+	    MIME="application/postscript"
+	    ;;
+
+	"jpeg"|"jpg"|"jpe")
+	    MIME="image/jpeg"
+	    ;;
+	"gif")
+	    MIME="image/gif"
+	    ;;
+	"png")
+	    MIME="image/png"
+	    ;;
+	"tiff"|"tif")
+	    MIME="image/tiff"
+	    ;;
+	"ico")
+	    MIME="image/x-icon"
+	    ;;
+	"bmp"|"bm")
+	    MIME="image/x-bmp"
+	    ;;
+	"svg")
+	    MIME="image/svg+xml"
+	    ;;
+
+	"ttf")
+	    MIME="application/font-ttf"
+	    ;;
+	"otf")
+	    MIME="application/vnd.ms-opentype"
+	    ;;
+	"eot")
+	    MIME="application/vnd.ms-fontobject"
+	    ;;
+	"woff")
+	    MIME="application/font-woff"
+	    ;;
+
+	"mka")
+	    MIME="audio/x-matroska"
+	    ;;
+	"mpga"|"mpa"|"mp3"|"mp2")
+	    MIME="audio/mpeg"
+	    ;;
+	"oga"|"ogg"|"spx")
+	    MIME="audio/ogg"
+	    ;;
+	"flac")
+	    MIME="audio/flac"
+	    ;;
+	"wav")
+	    MIME="audio/wav"
+	    ;;
+
+	"mpeg"|"mpg"|"mpe")
+	    MIME="video/mpeg"
+	    ;;
+	"ogv")
+	    MIME="video/ogg"
+	    ;;
+	"flv"|"f4v")
+	    MIME="video/x-flv"
+	    ;;
+	"mp4")
+	    MIME="video/mpeg"
+	    ;;
+	"mk3d"|"mkv"|"mks")
+	    MIME="video/x-matroska"
+	    ;;
+	"mov"|"qt")
+	    MIME="video/quicktime"
+	    ;;
+	"avi")
+	    MIME="video/avi"
+	    ;;
+
+	"tar")
+	    MIME="application/x-tar"
+	    ;;
+	"tgz"|"gz")
+	    MIME="application/x-gzip"
+	    ;;
+	"zip")
+	    MIME="application/zip"
+	    ;;
+
+	# default type
+	*)
+	    MIME="application/octet-stream"
+	    ;;
+    esac
+    printf "%s" "$MIME"
+}
+
+function get_size() {
+    stat --printf='%s' "$1"
+}
+
+function mksparse() {
+    local FNAME="$1"
+    local SIZE="$2"
+
+    dd if=/dev/zero of="${FNAME}" count=0 bs=1 seek="${SIZE}"
+}
+
+function isindex() {
+    local BNAME="$( basename "$1" )"
+    if [ "$BNAME" = "index.htm" -o "$BNAME" = "index.html" ]; then
+	return 0
+    fi
+    return 1
+}
+
+
+
+if [ -z "$WWWDIR" -o -z "$SHFSIMG" ]; then
+    usage
+    exit 1
+fi
+if [ ! -d "$WWWDIR" ]; then
+    echo "${WWWDIR} is not a directory" 1>&2
+    usage
+    exit 1
+fi
+if [ -e "$SHFSIMG" -a ! -b "$SHFSIMG" ]; then
+    echo "${SHFSIMG} exists already and is not a block device" 1>&2
+    usage
+    exit 1
+fi
+
+BASE=$( pwd )
+cd "$WWWDIR"
+FILES="$( find ./ -not \( -path ./.git -prune \) -not \( -path ./.gitignore -prune \) -not \( -path ./.DS_Store \) )"
+I=0
+DEF_I=-1
+FILE=()
+NAME=()
+MIME=()
+HASH=()
+SIZE=()
+TSIZE=0
+CHUNKS=()
+TCHUNKS=0
+
+echo "* Collecting file information..."
+IFS=$NL
+for F in $FILES; do
+    IFS=$IFSORIG
+    F="${F:2}" # cuts leading './'
+    if [ -z "$F" -o ! -f "$F" ]; then
+	continue
+    fi
+
+    # build up array
+    echo "  ${F}"
+    FILE[$I]="$( pwd )/${F}"
+    NAME[$I]="${F}"
+    HASH[$I]="$( get_hash "${NAME[$I]}" )" # hash of target filename
+    MIME[$I]="$( get_mime "${F}" )"
+    SIZE[$I]="$( get_size "${F}" )"
+    CHUNKS[$I]=$(( (SIZE[$I] + CSIZE - 1) / CSIZE ))
+
+    (( TSIZE += SIZE[$I] ))
+    (( TCHUNKS += CHUNKS[$I] ))
+
+    isindex "${FILE[$I]}"
+    if [ $? -eq 0 ]; then
+	# file is an index file
+	if [ "$( dirname "${NAME[$I]}" )" != "." ]; then
+	    # WORKARAOUND add a copy of the file with just having the dirname
+	    FILE[$(( I + 1 ))]="${FILE[$I]}"
+	    NAME[$(( I + 1 ))]="$( dirname "${NAME[$I]}" )"
+	    HASH[$(( I + 1 ))]="$( get_hash "${NAME[$(( I + 1 ))]}" )"
+	    MIME[$(( I + 1 ))]="${MIME[$I]}"
+	    SIZE[$(( I + 1 ))]="${SIZE[$I]}"
+	    CHUNKS[$(( I + 1 ))]="${CHUNKS[$I]}"
+
+	    FILE[$(( I + 2 ))]="${FILE[$I]}"
+	    NAME[$(( I + 2 ))]="$( dirname "${NAME[$I]}" )/"
+	    HASH[$(( I + 2 ))]="$( get_hash "${NAME[$(( I + 2 ))]}" )"
+	    MIME[$(( I + 2 ))]="${MIME[$I]}"
+	    SIZE[$(( I + 2 ))]="${SIZE[$I]}"
+	    CHUNKS[$(( I + 1 ))]="${CHUNKS[$I]}"
+
+	    (( TSIZE += 2 * SIZE[$I] ))
+	    (( TCHUNKS += 2 * CHUNKS[$I] ))
+	    (( I += 2 ))
+	else
+	    # index file in base dir -> set default flag
+	    DEF_I=$I
+	fi
+    fi
+
+    (( I++ ))
+    IFS=$NL
+done
+IFS=$IFSORIG
+cd "${BASE}"
+NB_FILES=$I
+
+echo "* Summary:"
+echo "  ${NB_FILES} files"
+echo "  ${TCHUNKS} chunks ($(( TSIZE / 1024 )) KiB)"
+
+if [ ! -b "${SHFSIMG}" ]; then
+    SHFSIMG_SIZE=$(( (TCHUNKS + 3 + ((NB_BKTS * E_PER_BKT * ESIZE) / CSIZE)) * CSIZE ))
+    echo "* Creating sparse image file with size of $(( SHFSIMG_SIZE / 1024 )) KiB"
+    mksparse "${SHFSIMG}" "${SHFSIMG_SIZE}"
+fi
+
+echo "* Formatting"
+$SHFS_MKFS -f -n "mkwebfs" -F manual -l 20 -b "${NB_BKTS}" -e "${E_PER_BKT}" -s "${CSIZE}" "${SHFSIMG}"
+
+echo "* Adding files"
+for (( I=0; I<${NB_FILES}; I++ )); do
+    echo "  ${NAME[$I]}"
+    $SHFS_ADMIN -a "${FILE[$I]}" -D "${HASH[$I]}" -n "${NAME[$I]}" -m "${MIME[$I]}" "${SHFSIMG}"
+done
+
+if [ "$DEF_I" != "-1" ]; then
+    echo "* Marking index file (${NAME[$DEF_I]}, ${HASH[$DEF_I]})"
+    $SHFS_ADMIN -d "${HASH[$DEF_I]}" "${SHFSIMG}"
+fi
+
+echo "* Done"
+$SHFS_ADMIN -l "${SHFSIMG}"
