@@ -1190,22 +1190,30 @@ struct mcargs {
 
 /******************************************************************************/
 // The lwip global functions.
-STATIC mp_obj_t mod_lwip_netifadd() {
+STATIC mp_obj_t mod_lwip_netifadd(mp_obj_t ip, mp_obj_t mask, mp_obj_t gw) {
   struct netif *niret;
   
-  IP4_ADDR(&args.ip,   172, 64, 0, 100);
-  IP4_ADDR(&args.mask, 255, 255, 255, 0);
-  IP4_ADDR(&args.gw,     0,   0,   0,   0);
+  if (!ipaddr_aton(mp_obj_str_get_str(ip), &args.ip)) {
+    nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "not a valid IP address"));
+  }
+  if (!ipaddr_aton(mp_obj_str_get_str(mask), &args.mask)) {
+    nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "not a valid mask"));
+  }
+  if (!ipaddr_aton(mp_obj_str_get_str(gw), &args.gw)) {
+    nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "not a valid gateway"));
+  }    
   
   niret = netif_add(&args.netif, &args.ip, &args.mask, &args.gw, NULL,
-		    netfrontif_init, ethernet_input);
+  	            netfrontif_init, ethernet_input);
   netif_set_default(&args.netif);
   netif_set_up(&args.netif);
+  return mp_const_none;
 }
-MP_DEFINE_CONST_FUN_OBJ_0(mod_lwip_netifadd_obj, mod_lwip_netifadd);
+MP_DEFINE_CONST_FUN_OBJ_3(mod_lwip_netifadd_obj, mod_lwip_netifadd);
 
 STATIC mp_obj_t mod_lwip_poll() {
   netfrontif_poll(&args.netif);
+  return mp_const_none;
 }
 MP_DEFINE_CONST_FUN_OBJ_0(mod_lwip_poll_obj, mod_lwip_poll);
 
@@ -1297,7 +1305,6 @@ MP_DEFINE_CONST_FUN_OBJ_0(lwip_print_pcbs_obj, lwip_print_pcbs);
 STATIC const mp_map_elem_t mp_module_lwip_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__), MP_OBJ_NEW_QSTR(MP_QSTR_lwip) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_reset), (mp_obj_t)&mod_lwip_reset_obj },
-    //    { MP_OBJ_NEW_QSTR(MP_QSTR_callback), (mp_obj_t)&mod_lwip_callback_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_getaddrinfo), (mp_obj_t)&lwip_getaddrinfo_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_print_pcbs), (mp_obj_t)&lwip_print_pcbs_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_netifadd), (mp_obj_t)&mod_lwip_netifadd_obj },
