@@ -240,10 +240,10 @@ int main(int argc, char **argv) {
     init_shfs();
     ret = mount_shfs(&id, 1);   
     if (ret < 0) return 0;
-    do_file("");
+    //    do_file("");
 #endif
-    
-    //do_str("print('Hello world!\n'");
+    //do_str("import lwip\nlwip.reset()\n");    
+    do_str("import lwip\nlwip.reset()\neth = lwip.ether('172.64.0.100', '255.255.255.0', '0.0.0.0')\nwhile 1: eth.poll()\n");
     
     mp_deinit();
 

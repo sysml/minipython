@@ -30,9 +30,9 @@ If you're using the command do_file and SHFS, add a disk:
 
       disk = [ 'file:/root/workspace/mini-python/minios/minipython-volume.shfs,xvda,w']
 
-To create minipython-volume.shfs, in the scripts subdirectory run
+To create minipython-volume.shfs, in the scripts subdirectory run:
 
-   ./mkwebfs /path/to/your/python/files pythonsrcs.shfs
+    ./mkwebfs /path/to/your/python/files pythonsrcs.shfs
 
 Get the signature of the file you want to run with:
 

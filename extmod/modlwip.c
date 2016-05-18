@@ -67,6 +67,66 @@
 #include "lwip/sio.h"
 #endif
 
+typedef struct _lwip_ether_obj_t {
+  mp_obj_base_t   base;
+  struct eth_addr mac;
+  struct netif    netif;
+  ip4_addr_t      ip;
+  ip4_addr_t      mask;
+  ip4_addr_t      gw;
+} lwip_ether_obj_t;
+STATIC lwip_ether_obj_t lwip_ether_obj;
+STATIC const mp_obj_type_t lwip_ether_type;
+
+
+STATIC mp_obj_t lwip_ether_make_new(mp_obj_t type_in, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *args) {
+  struct netif *niret;
+  
+  mp_arg_check_num(n_args, n_kw, 3, 3, false);
+  
+  lwip_ether_obj.base.type = &lwip_ether_type;
+  
+  if (!ipaddr_aton(mp_obj_str_get_str(args[0]), &lwip_ether_obj.ip)) {
+    nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "not a valid IP address"));
+  }
+  if (!ipaddr_aton(mp_obj_str_get_str(args[1]), &lwip_ether_obj.mask)) {
+    nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "not a valid mask"));
+  }
+  if (!ipaddr_aton(mp_obj_str_get_str(args[2]), &lwip_ether_obj.gw)) {
+    nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "not a valid gateway"));
+  }
+
+  niret = netif_add(&lwip_ether_obj.netif, &lwip_ether_obj.ip, &lwip_ether_obj.mask, &lwip_ether_obj.gw, NULL,
+		    netfrontif_init, ethernet_input);
+  netif_set_default(&lwip_ether_obj.netif);
+  netif_set_up(&lwip_ether_obj.netif);
+  
+  return (mp_obj_t)&lwip_ether_obj;
+}
+
+
+STATIC mp_obj_t lwip_ether_poll(mp_obj_t test) {
+  netfrontif_poll(&lwip_ether_obj.netif);
+  return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(lwip_ether_poll_obj, lwip_ether_poll);
+
+
+
+STATIC const mp_map_elem_t lwip_ether_locals_dict_table[] = {
+  { MP_OBJ_NEW_QSTR(MP_QSTR_poll), (mp_obj_t)&lwip_ether_poll_obj },
+};
+
+STATIC MP_DEFINE_CONST_DICT(lwip_ether_locals_dict, lwip_ether_locals_dict_table);
+
+STATIC const mp_obj_type_t lwip_ether_type = {
+  { &mp_type_type },
+  .name = MP_QSTR_ether,
+  .make_new = lwip_ether_make_new,
+  .locals_dict = (mp_obj_t)&lwip_ether_locals_dict,
+};
+
+
 #ifdef MICROPY_PY_LWIP_SLIP
 /******************************************************************************/
 // Slip object for modlwip. Requires a serial driver for the port that supports
@@ -1190,6 +1250,7 @@ struct mcargs {
 
 /******************************************************************************/
 // The lwip global functions.
+/*
 STATIC mp_obj_t mod_lwip_netifadd(mp_obj_t ip, mp_obj_t mask, mp_obj_t gw) {
   struct netif *niret;
   
@@ -1210,12 +1271,7 @@ STATIC mp_obj_t mod_lwip_netifadd(mp_obj_t ip, mp_obj_t mask, mp_obj_t gw) {
   return mp_const_none;
 }
 MP_DEFINE_CONST_FUN_OBJ_3(mod_lwip_netifadd_obj, mod_lwip_netifadd);
-
-STATIC mp_obj_t mod_lwip_poll() {
-  netfrontif_poll(&args.netif);
-  return mp_const_none;
-}
-MP_DEFINE_CONST_FUN_OBJ_0(mod_lwip_poll_obj, mod_lwip_poll);
+*/
 
 STATIC mp_obj_t mod_lwip_reset() {
     lwip_init();
@@ -1307,13 +1363,14 @@ STATIC const mp_map_elem_t mp_module_lwip_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_reset), (mp_obj_t)&mod_lwip_reset_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_getaddrinfo), (mp_obj_t)&lwip_getaddrinfo_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_print_pcbs), (mp_obj_t)&lwip_print_pcbs_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_netifadd), (mp_obj_t)&mod_lwip_netifadd_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_poll), (mp_obj_t)&mod_lwip_poll_obj },        
+    //    { MP_OBJ_NEW_QSTR(MP_QSTR_netifadd), (mp_obj_t)&mod_lwip_netifadd_obj },
+    //{ MP_OBJ_NEW_QSTR(MP_QSTR_poll), (mp_obj_t)&mod_lwip_poll_obj },        
     // objects
     { MP_OBJ_NEW_QSTR(MP_QSTR_socket), (mp_obj_t)&lwip_socket_type },
 #ifdef MICROPY_PY_LWIP_SLIP
     { MP_OBJ_NEW_QSTR(MP_QSTR_slip), (mp_obj_t)&lwip_slip_type },
 #endif
+    { MP_OBJ_NEW_QSTR(MP_QSTR_ether), (mp_obj_t)&lwip_ether_type },    
     // class constants
     { MP_OBJ_NEW_QSTR(MP_QSTR_AF_INET), MP_OBJ_NEW_SMALL_INT(MOD_NETWORK_AF_INET) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_AF_INET6), MP_OBJ_NEW_SMALL_INT(MOD_NETWORK_AF_INET6) },
