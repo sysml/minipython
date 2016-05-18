@@ -1,5 +1,3 @@
-include mkenv_minios.mk
-
 ######################################################################
 # Mini-OS Definitions
 ######################################################################
@@ -19,6 +17,9 @@ verbose                 ?=
 debug                   ?= y
 CC                       = gcc
 CPP                      = gcc
+SED                      = sed
+ECHO                     = @echo
+PYTHON                   = python
 
 ## vif
 CONFIG_NETFRONT                    = y
@@ -42,6 +43,8 @@ CONFIG_MP_LWIP_DEBUG               = n
 CONFIG_SHFS                        = y
 
 
+include mkenv_minios.mk
+
 ######################################################################
 # Objects and Flags
 ######################################################################
@@ -56,7 +59,8 @@ STUB_CFLAGS      += -Iinc                          \
 ifeq ($(CONFIG_SHFS),y)
 STUB_CFLAGS      += -DSHFS_OPENBYNAME              \
                     -DSHFS_CACHE_READAHEAD=8       \
-	            -DSHFS_CACHE_GROW
+	            -DSHFS_CACHE_GROW              \
+	            -DSHFS_ENABLE
 endif
 
 ifeq ($(CONFIG_MP_LWIP_DEBUG),y)

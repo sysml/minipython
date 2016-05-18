@@ -36,7 +36,6 @@ STATIC uint emit_opt = MP_EMIT_OPT_NONE;
 long heap_size = 1024*1024 * (sizeof(mp_uint_t) / 4);
 #endif
 
-
 STATIC void stderr_print_strn(void *env, const char *str, size_t len) {
     (void)env;
     ssize_t dummy = write(STDERR_FILENO, str, len);
@@ -75,7 +74,6 @@ typedef struct _mp_lexer_file_buf_t {
   uint64_t fpos;
   uint64_t fsize;
 } mp_lexer_file_buf_t;
-
 
 // Returns standard error codes: 0 for success, 1 for all other errors,
 // except if FORCED_EXIT bit is set then script raised SystemExit and the
@@ -129,7 +127,7 @@ STATIC int execute_from_lexer(mp_lexer_t *lex, mp_parse_input_kind_t input_kind,
 #else
 #endif
 
-STATIC mp_uint_t file_buf_next_byte(mp_lexer_file_buf_t *fb) {
+STATIC mp_uint_t shfs_file_buf_next_byte(mp_lexer_file_buf_t *fb) {
   uint64_t rlen;
   int ret;
 
@@ -143,33 +141,16 @@ STATIC mp_uint_t file_buf_next_byte(mp_lexer_file_buf_t *fb) {
     fb->fpos += rlen;
   }
   return fb->buf[fb->pos++];  
-  /*
-    if (fb->len < sizeof(fb->buf)) {
-      return MP_LEXER_EOF;
-    } else {
-      UINT n;
-      f_read(&fb->fp, fb->buf, sizeof(fb->buf), &n);
-      if (n == 0) {
-	return MP_LEXER_EOF;
-      }
-      fb->len = n;
-      fb->pos = 0;
-    }
-    }*/
-
 }
 
 
 
-STATIC void file_buf_close(mp_lexer_file_buf_t *fb) {
+STATIC void shfs_file_buf_close(mp_lexer_file_buf_t *fb) {
   shfs_fio_close(fb->f);
   m_del_obj(mp_lexer_file_buf_t, fb);
 }
 
 mp_lexer_t *mp_lexer_new_from_file(const char *filename) {
-
-  //  int id = 51712;
-  //  char buf[1024];
   uint64_t rlen;
   int ret = 0;
     
@@ -191,7 +172,7 @@ mp_lexer_t *mp_lexer_new_from_file(const char *filename) {
   fb->fpos = rlen;
   fb->pos = 0;
   
-  return mp_lexer_new(qstr_from_str(filename), fb, (mp_lexer_stream_next_byte_t)file_buf_next_byte, (mp_lexer_stream_close_t)file_buf_close);
+  return mp_lexer_new(qstr_from_str(filename), fb, (mp_lexer_stream_next_byte_t)shfs_file_buf_next_byte, (mp_lexer_stream_close_t)shfs_file_buf_close);
 }
 
 STATIC int do_str(const char *str) {
@@ -221,44 +202,6 @@ void print_banner() {
   printk("         Filipe Manco  <filipe.manco@neclab.eu>                 \n");
   printk("\n");
 }
-  
-
-//MP_NOINLINE int main_(int argc, char **argv) {
-int main(int argc, char **argv) {
-    int ret = 0;
-    int id = 51712;
-    
-    print_banner();  
-
-    mp_stack_ctrl_init();
-    mp_stack_set_limit(40000 * (BYTES_PER_WORD / 4));
-
-#if MICROPY_ENABLE_GC
-    char *heap = malloc(heap_size);
-    gc_init(heap, heap + heap_size);
-#endif
-
-    mp_init();
-
-    
-    init_shfs();
-    ret = mount_shfs(&id, 1);   
-    if (ret < 0) return 0;
-
-    do_file("");
-    //do_str("print('Hello world!\n'");
-    
-    mp_deinit();
-
-#if MICROPY_ENABLE_GC && !defined(NDEBUG)
-    // We don't really need to free memory since we are about to exit the
-    // process, but doing so helps to find memory leaks.
-    free(heap);
-#endif
-
-    return 0;
-}
-
 
 uint mp_import_stat(const char *path) {
   struct stat st;
@@ -275,4 +218,40 @@ uint mp_import_stat(const char *path) {
 void nlr_jump_fail(void *val) {
   printf("FATAL: uncaught NLR %p\n", val);
   exit(1);
+}
+
+int main(int argc, char **argv) {
+    int ret = 0;
+    int id = 51712;
+    
+    print_banner();  
+
+    mp_stack_ctrl_init();
+    mp_stack_set_limit(40000 * (BYTES_PER_WORD / 4));
+
+#if MICROPY_ENABLE_GC
+    char *heap = malloc(heap_size);
+    gc_init(heap, heap + heap_size);
+#endif
+
+    mp_init();
+
+#if SHFS_ENABLE    
+    init_shfs();
+    ret = mount_shfs(&id, 1);   
+    if (ret < 0) return 0;
+    do_file("");
+#endif
+    
+    //do_str("print('Hello world!\n'");
+    
+    mp_deinit();
+
+#if MICROPY_ENABLE_GC && !defined(NDEBUG)
+    // We don't really need to free memory since we are about to exit the
+    // process, but doing so helps to find memory leaks.
+    free(heap);
+#endif
+
+    return 0;
 }
