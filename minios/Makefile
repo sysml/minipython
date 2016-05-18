@@ -1,33 +1,11 @@
 include mkenv_minios.mk
 
-BUILD ?= build
-
-QSTR_GEN_EXTRA_CFLAGS += -D__QSTR_EXTRACT -DN_X64 -DN_X86 -DN_THUMB -DN_ARM
-QSTR_GEN_EXTRA_CFLAGS += -I$(BUILD)/tmp
-
-
-MICROPY_FORCE_32BIT = 0
-
-## vif
-CONFIG_NETFRONT          = y
-CONFIG_NETFRONT_PERSISTENT_GRANTS ?= y
-CONFIG_NETFRONT_GSO              ?= y
-CONFIG_NETFRONT_POLL             = n
-CONFIG_NETFRONT_POLLTIMEOUT      = 1
-CONFIG_NETFRONT_WAITFORTX       ?= y
-CONFIG_NETFRONT_LWIP_ONLY       ?= y
-
-## lwip
-CONFIG_LWIP                      = y
-CONFIG_LWIP_MINIMAL              = y
-CONFIG_LWIP_NOTHREADS            = y
-CONFIG_LWIP_HEAP_ONLY           ?= n
-CONFIG_LWIP_POOLS_ONLY           = n
-CONFIG_START_NETWORK             = n
-
 ######################################################################
-# Mini-OS definitions
+# Mini-OS Definitions
 ######################################################################
+BUILD                  ?= build
+STUBDOM_NAME            = mini-python
+STUBDOM_ROOT            = $(realpath .)
 ARCH                    := x86_64
 XEN_TARGET_ARCH         := $(ARCH)
 XEN_COMPILE_ARCH        := $(ARCH)
@@ -39,65 +17,110 @@ LWIP_ROOT               ?= $(TOOLCHAIN_ROOT)/$(ARCH)-root/x86_64-xen-elf
 GCC_VERSION             ?= 4.9
 verbose                 ?=
 debug                   ?= y
-CC = gcc
-CPP = gcc
+CC                       = gcc
+CPP                      = gcc
 
-STUBDOM_NAME     = mini-python
-STUBDOM_ROOT     = $(realpath .)
-STUB_CFLAGS      += -Iinc \
-                   -I. \
-                   -I.. \
-                   -I../lib/mp-readline \
-                   -I../stmhal \
-                   -I$(BUILD) \
-		   -I../lib/netutils \
-		   -DSHFS_OPENBYNAME \
-                   -DSHFS_CACHE_READAHEAD=8 \
-		   -DSHFS_CACHE_GROW
+## vif
+CONFIG_NETFRONT                    = y
+CONFIG_NETFRONT_PERSISTENT_GRANTS ?= y
+CONFIG_NETFRONT_GSO               ?= y
+CONFIG_NETFRONT_POLL               = n
+CONFIG_NETFRONT_POLLTIMEOUT        = 1
+CONFIG_NETFRONT_WAITFORTX         ?= y
+CONFIG_NETFRONT_LWIP_ONLY         ?= y
 
-#		   -DLWIP_IF_DEBUG \
-		   -DLWIP_SERVICE_DEBUG \
-		   -DLWIP_IP_DEBUG
+## lwip
+CONFIG_LWIP                        = y
+CONFIG_LWIP_MINIMAL                = y
+CONFIG_LWIP_NOTHREADS              = y
+CONFIG_LWIP_HEAP_ONLY             ?= n
+CONFIG_LWIP_POOLS_ONLY             = n
+CONFIG_START_NETWORK               = n
+CONFIG_MP_LWIP_DEBUG               = n
 
-#STUB_CFLAGS += -DMICROPY_PY_LWIP=1
+## shfs
+CONFIG_SHFS                        = y
 
-STUB_APP_OBJS0  := main.o \
-		   unix_mphal.o \
-		   alloc.o \
-		   gccollect.o \
-                   ../lib/utils/printf.o \
-                   ../lib/utils/pyexec.o \
-                   ../lib/libc/string0.o \
-                   ../lib/mp-readline/readline.o \
-                   _frozen_mpy.o
 
-STUB_APP_OBJS0  += shfs/blkdev.o      \
-                   shfs/debug.o       \
-                   shfs/mempool.o     \
-                   shfs/htable.o      \
-                   shfs/ring.o        \
-                   shfs/shfs.o        \
-                   shfs/shfs_cache.o  \
-                   shfs/shfs_check.o  \
-                   shfs/shfs_fio.o    
+######################################################################
+# Objects and Flags
+######################################################################
+STUB_CFLAGS      += -Iinc                          \
+                    -I.                            \
+                    -I..                           \
+                    -I../lib/mp-readline           \
+                    -I../stmhal                    \
+                    -I$(BUILD)                     \
+		    -I../lib/netutils
 
-STUB_APP_OBJS0 += ../extmod/modlwip.o ../lib/netutils/netutils.o
+ifeq ($(CONFIG_SHFS),y)
+STUB_CFLAGS      += -DSHFS_OPENBYNAME              \
+                    -DSHFS_CACHE_READAHEAD=8       \
+	            -DSHFS_CACHE_GROW
+endif
 
-STUB_APP_OBJS0 += $(addprefix ../py/, $(PY_O_BASENAME))
+ifeq ($(CONFIG_MP_LWIP_DEBUG),y)
+STUB_CFLAGS      += -DLWIP_IF_DEBUG                \
+		    -DLWIP_SERVICE_DEBUG           \
+		    -DLWIP_IP_DEBUG
+endif
 
-STUB_BUILD_DIRS	+= $(STUBDOM_BUILD_DIR)/lib/utils $(STUBDOM_BUILD_DIR)/lib/libc $(STUBDOM_BUILD_DIR)/lib/mp-readline $(STUBDOM_BUILD_DIR)/build $(STUBDOM_BUILD_DIR)/py $(STUBDOM_BUILD_DIR)/extmod $(STUBDOM_BUILD_DIR)/lib/netutils $(STUBDOM_BUILD_DIR)/$(STUBDOM_NAME)/shfs
+STUB_APP_OBJS0   := main.o                         \
+		    unix_mphal.o                   \
+		    alloc.o                        \
+		    gccollect.o                    \
+                    ../lib/utils/printf.o          \
+                    ../lib/utils/pyexec.o          \
+                    ../lib/libc/string0.o          \
+                    ../lib/mp-readline/readline.o  \
+                    _frozen_mpy.o
 
+ifeq ($(CONFIG_SHFS),y)
+STUB_APP_OBJS0   += shfs/blkdev.o                  \
+                    shfs/debug.o                   \
+                    shfs/mempool.o                 \
+                    shfs/htable.o                  \
+                    shfs/ring.o                    \
+                    shfs/shfs.o                    \
+                    shfs/shfs_cache.o              \
+                    shfs/shfs_check.o              \
+                    shfs/shfs_fio.o    
+endif
+
+ifeq ($(CONFIG_LWIP),y)
+STUB_APP_OBJS0   += ../extmod/modlwip.o            \
+                    ../lib/netutils/netutils.o
+endif
+
+STUB_APP_OBJS0   += $(addprefix ../py/, $(PY_O_BASENAME))
+
+STUB_BUILD_DIRS	 += $(STUBDOM_BUILD_DIR)/lib/utils       \
+                    $(STUBDOM_BUILD_DIR)/lib/libc        \
+                    $(STUBDOM_BUILD_DIR)/lib/mp-readline \
+                    $(STUBDOM_BUILD_DIR)/build           \
+                    $(STUBDOM_BUILD_DIR)/py              \
+                    $(STUBDOM_BUILD_DIR)/extmod          \
+                    $(STUBDOM_BUILD_DIR)/lib/netutils    
+
+ifeq ($(CONFIG_SHFS),y)
+STUB_BUILD_DIRS  +=  $(STUBDOM_BUILD_DIR)/$(STUBDOM_NAME)/shfs
+endif
 
 include $(MINIOS_ROOT)/stub.mk
 
-$(STUB_APP_OBJS): | $(HEADER_BUILD)/qstrdefs.generated.h $(HEADER_BUILD)/mpversion.h
-######################################################################
 
+######################################################################
+# Targets
+######################################################################
 # qstr definitions (must come before including py.mk)
+QSTR_GEN_EXTRA_CFLAGS += -D__QSTR_EXTRACT -DN_X64 -DN_X86 -DN_THUMB -DN_ARM
+QSTR_GEN_EXTRA_CFLAGS += -I$(BUILD)/tmp
+MICROPY_FORCE_32BIT = 0
 QSTR_DEFS = qstrdefsport.h
 OBJ = $(PY_O) $(addprefix $(BUILD)/, $(SRC_C:.c=.o))
-
 MPCONFIGPORT_MK = $(wildcard mpconfigport.mk)
+
+$(STUB_APP_OBJS): | $(HEADER_BUILD)/qstrdefs.generated.h $(HEADER_BUILD)/mpversion.h
 
 $(HEADER_BUILD)/qstrdefs.generated.h: $(PY_QSTR_DEFS) $(QSTR_DEFS) $(QSTR_DEFS_COLLECTED) $(PY_SRC)/makeqstrdata.py mpconfigport.h $(MPCONFIGPORT_MK) $(PY_SRC)/mpconfig.h | $(HEADER_BUILD)
 	$(ECHO) "GEN $@"

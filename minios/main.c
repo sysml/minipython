@@ -1,29 +1,3 @@
-/*
- * This file is part of the Micro Python project, http://micropython.org/
- *
- * The MIT License (MIT)
- *
- * Copyright (c) 2013, 2014 Damien P. George
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
-
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -36,8 +10,6 @@
 #include <sys/types.h>
 #include <errno.h>
 
-#include "shfs/shfs.h"
-#include "shfs/shfs_fio.h"
 #include "py/mpstate.h"
 #include "py/nlr.h"
 #include "py/compile.h"
@@ -51,6 +23,9 @@
 #include "genhdr/mpversion.h"
 #include "input.h"
 
+#include "shfs/shfs.h"
+#include "shfs/shfs_fio.h"
+
 // Command line options, with their defaults
 STATIC bool compile_only = false;
 STATIC uint emit_opt = MP_EMIT_OPT_NONE;
@@ -61,7 +36,6 @@ STATIC uint emit_opt = MP_EMIT_OPT_NONE;
 long heap_size = 1024*1024 * (sizeof(mp_uint_t) / 4);
 #endif
 
-extern void mp_unix_mark_exec(void);
 
 STATIC void stderr_print_strn(void *env, const char *str, size_t len) {
     (void)env;
@@ -125,12 +99,6 @@ STATIC int execute_from_lexer(mp_lexer_t *lex, mp_parse_input_kind_t input_kind,
         #endif
 
         mp_parse_tree_t parse_tree = mp_parse(lex, input_kind);
-
-        /*
-        printf("----------------\n");
-        mp_parse_node_print(parse_tree.root, 0);
-        printf("----------------\n");
-        */
 
         mp_obj_t module_fun = mp_compile(&parse_tree, source_name, emit_opt, is_repl);
 
@@ -236,119 +204,34 @@ STATIC int do_file(const char *file) {
   return execute_from_lexer(lex, MP_PARSE_FILE_INPUT, false);
 }
 
-STATIC int usage(char **argv) {
-    printf(
-"usage: %s [<opts>] [-X <implopt>] [-c <command>] [<filename>]\n"
-"Options:\n"
-"-v : verbose (trace various operations); can be multiple\n"
-"-O[N] : apply bytecode optimizations of level N\n"
-"\n"
-"Implementation specific options:\n", argv[0]
-);
-    int impl_opts_cnt = 0;
-    printf(
-"  compile-only                 -- parse and compile only\n"
-"  emit={bytecode,native,viper} -- set the default code emitter\n"
-);
-    impl_opts_cnt++;
-#if MICROPY_ENABLE_GC
-    printf(
-"  heapsize=<n> -- set the heap size for the GC (default %ld)\n"
-, heap_size);
-    impl_opts_cnt++;
-#endif
-
-    if (impl_opts_cnt == 0) {
-        printf("  (none)\n");
-    }
-
-    return 1;
+void print_banner() {
+  printk("\n");  
+  printk(" __  __ _       _        _____       _   _                      \n");
+  printk("|  \\/  (_)     (_)      |  __ \\     | | | |                   \n");
+  printk("| \\  / |_ _ __  _ ______| |__) |   _| |_| |__   ___  _ __      \n");
+  printk("| |\\/| | | '_ \\| |______|  ___/ | | | __| '_ \\ / _ \\| '_ \\ \n");
+  printk("| |  | | | | | | |      | |   | |_| | |_| | | | (_) | | | |     \n");
+  printk("|_|  |_|_|_| |_|_|      |_|    \\__, |\\__|_| |_|\\___/|_| |_|  \n");
+  printk("                                __/ |                           \n");
+  printk("                               |___/                            \n");
+  printk("\n");
+  printk("Copyright(C) 2013-2016 NEC Europe Ltd.                          \n");
+  printk("Authors: Felipe Huici  <felipe.huici@neclab.eu>                 \n");  
+  printk("         Simon Kuenzer <simon.kuenzer@neclab.eu>                \n");  
+  printk("         Filipe Manco  <filipe.manco@neclab.eu>                 \n");
+  printk("\n");
 }
+  
 
-// Process options which set interpreter init options
-STATIC void pre_process_options(int argc, char **argv) {
-    for (int a = 1; a < argc; a++) {
-        if (argv[a][0] == '-') {
-            if (strcmp(argv[a], "-X") == 0) {
-                if (a + 1 >= argc) {
-                    exit(usage(argv));
-                }
-                if (0) {
-                } else if (strcmp(argv[a + 1], "compile-only") == 0) {
-                    compile_only = true;
-                } else if (strcmp(argv[a + 1], "emit=bytecode") == 0) {
-                    emit_opt = MP_EMIT_OPT_BYTECODE;
-                } else if (strcmp(argv[a + 1], "emit=native") == 0) {
-                    emit_opt = MP_EMIT_OPT_NATIVE_PYTHON;
-                } else if (strcmp(argv[a + 1], "emit=viper") == 0) {
-                    emit_opt = MP_EMIT_OPT_VIPER;
-#if MICROPY_ENABLE_GC
-                } else if (strncmp(argv[a + 1], "heapsize=", sizeof("heapsize=") - 1) == 0) {
-                    char *end;
-                    heap_size = strtol(argv[a + 1] + sizeof("heapsize=") - 1, &end, 0);
-                    // Don't bring unneeded libc dependencies like tolower()
-                    // If there's 'w' immediately after number, adjust it for
-                    // target word size. Note that it should be *before* size
-                    // suffix like K or M, to avoid confusion with kilowords,
-                    // etc. the size is still in bytes, just can be adjusted
-                    // for word size (taking 32bit as baseline).
-                    bool word_adjust = false;
-                    if ((*end | 0x20) == 'w') {
-                        word_adjust = true;
-                        end++;
-                    }
-                    if ((*end | 0x20) == 'k') {
-                        heap_size *= 1024;
-                    } else if ((*end | 0x20) == 'm') {
-                        heap_size *= 1024 * 1024;
-                    }
-                    if (word_adjust) {
-                        heap_size = heap_size * BYTES_PER_WORD / 4;
-                    }
-#endif
-                } else {
-                    exit(usage(argv));
-                }
-                a++;
-            }
-        }
-    }
-}
-
-#ifdef _WIN32
-#define PATHLIST_SEP_CHAR ';'
-#else
-#define PATHLIST_SEP_CHAR ':'
-#endif
-
-MP_NOINLINE int main_(int argc, char **argv);
-
+//MP_NOINLINE int main_(int argc, char **argv) {
 int main(int argc, char **argv) {
-    // We should capture stack top ASAP after start, and it should be
-    // captured guaranteedly before any other stack variables are allocated.
-    // For this, actual main (renamed main_) should not be inlined into
-    // this function. main_() itself may have other functions inlined (with
-    // their own stack variables), that's why we need this main/main_ split.
-    mp_stack_ctrl_init();
-    return main_(argc, argv);
-}
-
-MP_NOINLINE int main_(int argc, char **argv) {
-  /*
-
-    char buf[1024];
-    uint64_t fsize, left, cur, dlen, plen;
-    unsigned int i;
-    SHFS_FD f;
-
-  */
-
     int ret = 0;
     int id = 51712;
     
-  mp_stack_set_limit(40000 * (BYTES_PER_WORD / 4));
+    print_banner();  
 
-    pre_process_options(argc, argv);
+    mp_stack_ctrl_init();
+    mp_stack_set_limit(40000 * (BYTES_PER_WORD / 4));
 
 #if MICROPY_ENABLE_GC
     char *heap = malloc(heap_size);
@@ -357,12 +240,13 @@ MP_NOINLINE int main_(int argc, char **argv) {
 
     mp_init();
 
+    
     init_shfs();
     ret = mount_shfs(&id, 1);   
     if (ret < 0) return 0;
 
-    do_file("");    
-    //    do_str("import lwip\nlwip.reset()\nlwip.netifadd('172.64.0.100', '255.255.255.0', '0.0.0.0')\nwhile 1: lwip.poll()\nprint('done!!!!')\n");
+    do_file("");
+    //do_str("print('Hello world!\n'");
     
     mp_deinit();
 
@@ -372,23 +256,23 @@ MP_NOINLINE int main_(int argc, char **argv) {
     free(heap);
 #endif
 
-    //printf("total bytes = %d\n", m_get_total_bytes_allocated());
     return 0;
 }
 
+
 uint mp_import_stat(const char *path) {
-    struct stat st;
-    if (stat(path, &st) == 0) {
-        if (S_ISDIR(st.st_mode)) {
-            return MP_IMPORT_STAT_DIR;
-        } else if (S_ISREG(st.st_mode)) {
-            return MP_IMPORT_STAT_FILE;
-        }
+  struct stat st;
+  if (stat(path, &st) == 0) {
+    if (S_ISDIR(st.st_mode)) {
+      return MP_IMPORT_STAT_DIR;
+    } else if (S_ISREG(st.st_mode)) {
+      return MP_IMPORT_STAT_FILE;
     }
-    return MP_IMPORT_STAT_NO_EXIST;
+  }
+  return MP_IMPORT_STAT_NO_EXIST;
 }
 
 void nlr_jump_fail(void *val) {
-    printf("FATAL: uncaught NLR %p\n", val);
-    exit(1);
+  printf("FATAL: uncaught NLR %p\n", val);
+  exit(1);
 }
