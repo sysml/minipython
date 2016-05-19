@@ -67,7 +67,9 @@ STATIC int handle_uncaught_exception(mp_obj_base_t *exc) {
 }
 
 typedef struct _mp_lexer_file_buf_t {
+#if SHFS_ENABLE
   SHFS_FD f;
+#endif
   byte buf[20];
   uint16_t len;
   uint16_t pos;
@@ -127,6 +129,7 @@ STATIC int execute_from_lexer(mp_lexer_t *lex, mp_parse_input_kind_t input_kind,
 #else
 #endif
 
+#if SHFS_ENABLE
 STATIC mp_uint_t shfs_file_buf_next_byte(mp_lexer_file_buf_t *fb) {
   uint64_t rlen;
   int ret;
@@ -142,8 +145,6 @@ STATIC mp_uint_t shfs_file_buf_next_byte(mp_lexer_file_buf_t *fb) {
   }
   return fb->buf[fb->pos++];  
 }
-
-
 
 STATIC void shfs_file_buf_close(mp_lexer_file_buf_t *fb) {
   shfs_fio_close(fb->f);
@@ -174,6 +175,7 @@ mp_lexer_t *mp_lexer_new_from_file(const char *filename) {
   
   return mp_lexer_new(qstr_from_str(filename), fb, (mp_lexer_stream_next_byte_t)shfs_file_buf_next_byte, (mp_lexer_stream_close_t)shfs_file_buf_close);
 }
+#endif
 
 STATIC int do_str(const char *str) {
     mp_lexer_t *lex = mp_lexer_new_from_str_len(MP_QSTR__lt_stdin_gt_, str, strlen(str), false);
@@ -221,8 +223,10 @@ void nlr_jump_fail(void *val) {
 }
 
 int main(int argc, char **argv) {
+#if SHFS_ENABLE      
     int ret = 0;
     int id = 51712;
+#endif
     
     print_banner();  
 

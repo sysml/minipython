@@ -75,6 +75,8 @@ typedef struct _lwip_ether_obj_t {
   ip4_addr_t      mask;
   ip4_addr_t      gw;
 } lwip_ether_obj_t;
+
+// Ether object is unique for now. Possibly can fix this later. FIXME
 STATIC lwip_ether_obj_t lwip_ether_obj;
 STATIC const mp_obj_type_t lwip_ether_type;
 
