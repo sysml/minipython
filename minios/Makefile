@@ -40,8 +40,10 @@ CONFIG_START_NETWORK               = n
 CONFIG_MP_LWIP_DEBUG               = n
 
 ## shfs
-CONFIG_SHFS                        = y
+CONFIG_SHFS                        = n
 
+## fatfs (disable shfs above if enabled)
+CONFIG_FATFS                       = y
 
 include mkenv_minios.mk
 
@@ -62,6 +64,9 @@ STUB_CFLAGS      += -DSHFS_OPENBYNAME              \
 	            -DSHFS_CACHE_GROW              \
 	            -DSHFS_ENABLE
 endif
+ifeq ($(CONFIG_FATFS),y)
+STUB_CFLAGS      += -DFATFS_ENABLE
+endif
 
 ifeq ($(CONFIG_MP_LWIP_DEBUG),y)
 STUB_CFLAGS      += -DLWIP_IF_DEBUG                \
@@ -79,12 +84,21 @@ STUB_APP_OBJS0   := main.o                         \
                     ../lib/mp-readline/readline.o  \
                     _frozen_mpy.o
 
+ifeq ($(CONFIG_FATFS),y)
+STUB_APP_OBJS0   += fatfs_port.o                   \
+                    storage.o                      \
+		    blkdev.o                       \
+		    mempool.o                      \
+                    ring.o                         \
+	            debug.o
+endif
+
 ifeq ($(CONFIG_SHFS),y)
-STUB_APP_OBJS0   += shfs/blkdev.o                  \
-                    shfs/debug.o                   \
-                    shfs/mempool.o                 \
+STUB_APP_OBJS0   += blkdev.o                       \
+		    debug.o                        \
+                    mempool.o                      \
                     shfs/htable.o                  \
-                    shfs/ring.o                    \
+                    ring.o                         \
                     shfs/shfs.o                    \
                     shfs/shfs_cache.o              \
                     shfs/shfs_check.o              \
@@ -104,7 +118,12 @@ STUB_BUILD_DIRS	 += $(STUBDOM_BUILD_DIR)/lib/utils       \
                     $(STUBDOM_BUILD_DIR)/build           \
                     $(STUBDOM_BUILD_DIR)/py              \
                     $(STUBDOM_BUILD_DIR)/extmod          \
-                    $(STUBDOM_BUILD_DIR)/lib/netutils    
+                    $(STUBDOM_BUILD_DIR)/lib/netutils
+
+ifeq ($(CONFIG_FATFS),y)
+STUB_BUILD_DIRS  += $(STUBDOM_BUILD_DIR)/lib/fatfs \
+		    $(STUBDOM_BUILD_DIR)/lib/fatfs/option
+endif
 
 ifeq ($(CONFIG_SHFS),y)
 STUB_BUILD_DIRS  +=  $(STUBDOM_BUILD_DIR)/$(STUBDOM_NAME)/shfs

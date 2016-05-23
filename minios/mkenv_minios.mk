@@ -150,7 +150,9 @@ PY_O_BASENAME += ../extmod/vfs_fat.o \
 	../extmod/vfs_fat_diskio.o \
 	../extmod/vfs_fat_file.o \
 	../extmod/vfs_fat_lexer.o \
-	../extmod/vfs_fat_misc.o
+	../extmod/vfs_fat_misc.o \
+        ../lib/fatfs/ff.o \
+	../lib/fatfs/option/cc932.o	
 endif
 
 ifeq ($(CONFIG_LWIP),y)

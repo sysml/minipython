@@ -23,8 +23,18 @@
 #include "genhdr/mpversion.h"
 #include "input.h"
 
+#if SHFS_ENABLE
 #include "shfs/shfs.h"
 #include "shfs/shfs_fio.h"
+#endif
+
+#if MICROPY_VFS_FAT
+#include "storage.h"
+extern mp_lexer_t *fat_vfs_lexer_new_from_file(const char *filename);
+extern mp_import_stat_t fat_vfs_import_stat(const char *path);
+#endif
+
+extern void mp_unix_mark_exec(void);
 
 // Command line options, with their defaults
 STATIC bool compile_only = false;
@@ -177,6 +187,26 @@ mp_lexer_t *mp_lexer_new_from_file(const char *filename) {
 }
 #endif
 
+#if MICROPY_VFS_FAT
+fs_user_mount_t fs_user_mount;
+
+mp_lexer_t *mp_lexer_new_from_file(const char *filename) {
+  return fat_vfs_lexer_new_from_file(filename);
+}
+
+mp_obj_t vfs_proxy_call(qstr method_name, mp_uint_t n_args, const mp_obj_t *args);
+/*
+mp_obj_t mp_builtin_open(uint n_args, const mp_obj_t *args, mp_map_t *kwargs) {
+      #if MICROPY_VFS_FAT
+  // TODO: Handle kwargs!
+  return vfs_proxy_call(MP_QSTR_open, n_args, args);
+      #else
+  return mp_const_none;
+      #endif
+}
+MP_DEFINE_CONST_FUN_OBJ_KW(mp_builtin_open_obj, 1, mp_builtin_open);*/
+#endif
+
 STATIC int do_str(const char *str) {
     mp_lexer_t *lex = mp_lexer_new_from_str_len(MP_QSTR__lt_stdin_gt_, str, strlen(str), false);
     return execute_from_lexer(lex, MP_PARSE_FILE_INPUT, false);
@@ -206,6 +236,9 @@ void print_banner() {
 }
 
 uint mp_import_stat(const char *path) {
+  #if MICROPY_VFS_FAT
+  return fat_vfs_import_stat(path);
+  #else
   struct stat st;
   if (stat(path, &st) == 0) {
     if (S_ISDIR(st.st_mode)) {
@@ -215,6 +248,7 @@ uint mp_import_stat(const char *path) {
     }
   }
   return MP_IMPORT_STAT_NO_EXIST;
+  #endif
 }
 
 void nlr_jump_fail(void *val) {
@@ -223,9 +257,10 @@ void nlr_jump_fail(void *val) {
 }
 
 int main(int argc, char **argv) {
-#if SHFS_ENABLE      
-    int ret = 0;
     int id = 51712;
+    
+#if SHFS_ENABLE  
+    int ret = 0;
 #endif
     
     print_banner();  
@@ -244,11 +279,40 @@ int main(int argc, char **argv) {
     init_shfs();
     ret = mount_shfs(&id, 1);   
     if (ret < 0) return 0;
-    //    do_file("");
+    do_file("");    
 #endif
-    //do_str("import lwip\nlwip.reset()\n");    
-    do_str("import lwip\nlwip.reset()\neth = lwip.ether('172.64.0.100', '255.255.255.0', '0.0.0.0')\nwhile 1: eth.poll()\n");
+
+#if MICROPY_VFS_FAT
+    fs_user_mount_t *vfs = &fs_user_mount;
+    vfs->str = "/";
+    vfs->len = 1;
+    vfs->flags = FSUSER_FREE_OBJ;
+
+    /* Open block device */
+    if (xen_blkdev_open((blkdev_id_t)id) < 0)
+    {
+      printk("Error while opening block device!");
+      return -1;      
+    }
+
+    /* Set read/write callbacks */
+    minios_block_init_vfs(vfs);
     
+    /* Mount drive */
+    FRESULT res = f_mount(&vfs->fatfs, vfs->str, 1);
+    if (res != FR_OK)
+    {
+      printk("Error while mounting drive: %d\n", res);
+      return -1;
+    }
+
+    /* Run main.py */
+    do_file("main.py");    
+#endif
+
+    //do_str("import lwip\nlwip.reset()\n");    
+    //do_str("import lwip\nlwip.reset()\neth = lwip.ether('172.64.0.100', '255.255.255.0', '0.0.0.0')\nwhile 1: eth.poll()\n");
+
     mp_deinit();
 
 #if MICROPY_ENABLE_GC && !defined(NDEBUG)
