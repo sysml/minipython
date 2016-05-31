@@ -89,7 +89,7 @@
     #define MICROPY_PY_SYS_PLATFORM  "linux"
 #endif
 #define MICROPY_PY_SYS_MAXSIZE      (0)
-#define MICROPY_PY_SYS              (0)
+#define MICROPY_PY_SYS              (1)
 #define MICROPY_PY_SYS_STDFILES     (0)
 #define MICROPY_PY_SYS_EXC_INFO     (0)
 #define MICROPY_PY_COLLECTIONS_ORDEREDDICT (1)
@@ -104,6 +104,9 @@
 #define MICROPY_PY_LWIP             (1)
 #define MICROPY_STACKLESS           (0)
 #define MICROPY_STACKLESS_STRICT    (0)
+
+#define MICROPY_PY_USSL (0)
+#define MICROPY_PY_WEBSOCKET (1)
 
 #define MICROPY_PY_OS_STATVFS       (1)
 #define MICROPY_PY_UCTYPES          (1)
@@ -155,60 +158,6 @@
 #define MICROPY_EMERGENCY_EXCEPTION_BUF_SIZE  (256)
 #define MICROPY_ASYNC_KBD_INTR      (1)
 
-/*
-extern const struct _mp_obj_module_t mp_module_machine;
-extern const struct _mp_obj_module_t mp_module_os;
-extern const struct _mp_obj_module_t mp_module_uselect;
-extern const struct _mp_obj_module_t mp_module_time;
-extern const struct _mp_obj_module_t mp_module_termios;
-extern const struct _mp_obj_module_t mp_module_socket;
-extern const struct _mp_obj_module_t mp_module_ffi;
-extern const struct _mp_obj_module_t mp_module_jni;
-*/
-/*
-#if MICROPY_PY_FFI
-#define MICROPY_PY_FFI_DEF { MP_ROM_QSTR(MP_QSTR_ffi), MP_ROM_PTR(&mp_module_ffi) },
-#else
-#define MICROPY_PY_FFI_DEF
-#endif
-#if MICROPY_PY_JNI
-#define MICROPY_PY_JNI_DEF { MP_ROM_QSTR(MP_QSTR_jni), MP_ROM_PTR(&mp_module_jni) },
-#else
-#define MICROPY_PY_JNI_DEF
-#endif
-#if MICROPY_PY_TIME
-#define MICROPY_PY_TIME_DEF { MP_ROM_QSTR(MP_QSTR_utime), MP_ROM_PTR(&mp_module_time) },
-#else
-#define MICROPY_PY_TIME_DEF
-#endif
-#if MICROPY_PY_TERMIOS
-#define MICROPY_PY_TERMIOS_DEF { MP_ROM_QSTR(MP_QSTR_termios), MP_ROM_PTR(&mp_module_termios) },
-#else
-#define MICROPY_PY_TERMIOS_DEF
-#endif
-#if MICROPY_PY_SOCKET
-#define MICROPY_PY_SOCKET_DEF { MP_ROM_QSTR(MP_QSTR_usocket), MP_ROM_PTR(&mp_module_socket) },
-#else
-#define MICROPY_PY_SOCKET_DEF
-#endif
-#if MICROPY_PY_USELECT
-#define MICROPY_PY_USELECT_DEF { MP_ROM_QSTR(MP_QSTR_uselect), MP_ROM_PTR(&mp_module_uselect) },
-#else
-#define MICROPY_PY_USELECT_DEF
-#endif
-*/
-/*
-#define MICROPY_PORT_BUILTIN_MODULES		\
-    MICROPY_PY_FFI_DEF \
-    MICROPY_PY_JNI_DEF \
-    MICROPY_PY_TIME_DEF \
-    MICROPY_PY_SOCKET_DEF \
-    { MP_ROM_QSTR(MP_QSTR_umachine), MP_ROM_PTR(&mp_module_machine) }, \
-    { MP_ROM_QSTR(MP_QSTR_uos), MP_ROM_PTR(&mp_module_os) }, \
-    MICROPY_PY_USELECT_DEF \
-    MICROPY_PY_TERMIOS_DEF \
-*/
-
 // type definitions for the specific machine
 
 // assume that if we already defined the obj repr then we also defined types
@@ -235,12 +184,6 @@ typedef long mp_off_t;
 
 typedef void *machine_ptr_t; // must be of pointer size
 typedef const void *machine_const_ptr_t; // must be of pointer size
-
-//void mp_unix_alloc_exec(mp_uint_t min_size, void** ptr, mp_uint_t *size);
-//void mp_unix_free_exec(void *ptr, mp_uint_t size);
-//void mp_unix_mark_exec(void);
-//#define MP_PLAT_ALLOC_EXEC(min_size, ptr, size) mp_unix_alloc_exec(min_size, ptr, size)
-//#define MP_PLAT_FREE_EXEC(ptr, size) mp_unix_free_exec(ptr, size)
 
 #ifndef MP_NOINLINE
 #define MP_NOINLINE __attribute__((noinline))

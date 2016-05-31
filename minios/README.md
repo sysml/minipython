@@ -26,7 +26,7 @@ brctl if you don't have one yet and edit the vif line in mini-python.xen:
 
       vif  = [ 'mac=00:11:22:33:44:55,bridge=vhostonly0' ]
 
-If you're using the command do_file and SHFS, add a disk:
+If you're using the command do_file and CONFIG_SHFS=y, add a disk:
 
       disk = [ 'file:/root/workspace/mini-python/minios/minipython-volume.shfs,xvda,w']
 
@@ -43,6 +43,14 @@ Get the signature of the file you want to run with:
 Set the default file flag with
 
     /shfs_admin -d [signature] minipython-volume.shfs
+
+If you're using the command do_file and CONFIG_FATFS=y, add a disk:
+
+disk = [ 'file:/root/workspace/mini-python/minios/mini-python-demo-test.img,xvda,w']
+
+OR
+
+disk = ['phy:/dev/loop0,xvda,w']
 
 Finally, create the VM with:
 

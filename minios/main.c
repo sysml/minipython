@@ -282,12 +282,28 @@ int main(int argc, char **argv) {
       printk("Error while mounting drive: %d\n", res);
       return -1;
     }
-    printk("Running main.py\n");
-    do_file("main.py");    
+    //    do_file("main.py");    
 #endif
-
     //do_str("import lwip\nlwip.reset()\neth = lwip.ether('172.64.0.100', '255.255.255.0', '0.0.0.0')\nwhile 1: eth.poll()\n");
 
+    /* broken "built-in" modules from:
+       http://docs.micropython.org/en/latest/pyboard/library/index.html 
+
+       * non built-in (see builtin.h):
+       unix/moduselect.c
+       unix/modos.c || ./cc3200/mods/moduos.c
+       unix/modsocket.c || ./cc3200/mods/modusocket.c
+       unix/modtime.c || ./cc3200/mods/modutime.c
+
+       * ignored
+       machine, network, pyb
+
+       * need support
+       ussl: missing crypto.h, ssl.h, etc. Enable in mpconfigport.h
+    */
+      
+    /* working modules */
+    do_str("import cmath\nimport gc\nimport math\nimport ubinascii\nimport ucollections\nimport uhashlib\nimport uheapq\nimport ujson\nimport ure\nimport ustruct\nimport uzlib\nimport uctypes\nimport micropython\nimport sys\nimport urandom\nimport websocket\nprint('Done')\n");
     mp_deinit();
 
 #if MICROPY_ENABLE_GC && !defined(NDEBUG)

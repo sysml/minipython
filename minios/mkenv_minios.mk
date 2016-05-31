@@ -128,7 +128,6 @@ PY_O_BASENAME = \
 	smallint.o \
 	frozenmod.o \
 	../extmod/moductypes.o \
-	../extmod/modujson.o \
 	../extmod/modure.o \
 	../extmod/moduzlib.o \
 	../extmod/moduheapq.o \
@@ -142,6 +141,7 @@ PY_O_BASENAME = \
 	../extmod/modwebrepl.o \
 	../extmod/modframebuf.o \
 	../extmod/fsusermount.o \
+	../extmod/modujson.o \
 	../extmod/moduos_dupterm.o
 
 ifeq ($(CONFIG_SHFS),n)
