@@ -21,6 +21,9 @@ SED                      = sed
 ECHO                     = @echo
 PYTHON                   = python
 
+# console
+CONFIG_CONSFRONT_SYNC   ?= y
+
 ## vif
 CONFIG_NETFRONT                    = y
 CONFIG_NETFRONT_PERSISTENT_GRANTS ?= y
@@ -86,10 +89,11 @@ STUB_APP_OBJS0   := main.o                         \
 
 ifeq ($(CONFIG_FATFS),y)
 STUB_APP_OBJS0   += fatfs_port.o                   \
-                    storage.o                      \
 		    blkdev.o                       \
+		    diskio.o                       \
 		    mempool.o                      \
                     ring.o                         \
+		    hexdump.o                      \
 	            debug.o
 endif
 
@@ -97,8 +101,8 @@ ifeq ($(CONFIG_SHFS),y)
 STUB_APP_OBJS0   += blkdev.o                       \
 		    debug.o                        \
                     mempool.o                      \
-                    shfs/htable.o                  \
                     ring.o                         \
+                    shfs/htable.o                  \
                     shfs/shfs.o                    \
                     shfs/shfs_cache.o              \
                     shfs/shfs_check.o              \
