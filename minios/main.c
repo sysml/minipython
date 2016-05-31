@@ -282,7 +282,7 @@ int main(int argc, char **argv) {
       printk("Error while mounting drive: %d\n", res);
       return -1;
     }
-    //    do_file("main.py");    
+    do_file("testcar.py");    
 #endif
     //do_str("import lwip\nlwip.reset()\neth = lwip.ether('172.64.0.100', '255.255.255.0', '0.0.0.0')\nwhile 1: eth.poll()\n");
 
@@ -303,7 +303,7 @@ int main(int argc, char **argv) {
     */
       
     /* working modules */
-    do_str("import cmath\nimport gc\nimport math\nimport ubinascii\nimport ucollections\nimport uhashlib\nimport uheapq\nimport ujson\nimport ure\nimport ustruct\nimport uzlib\nimport uctypes\nimport micropython\nimport sys\nimport urandom\nimport websocket\nprint('Done')\n");
+    //do_str("import cmath\nimport gc\nimport math\nimport ubinascii\nimport ucollections\nimport uhashlib\nimport uheapq\nimport ujson\nimport ure\nimport ustruct\nimport uzlib\nimport uctypes\nimport micropython\nimport sys\nimport urandom\nimport websocket\nprint('Done')\n");
     mp_deinit();
 
 #if MICROPY_ENABLE_GC && !defined(NDEBUG)
