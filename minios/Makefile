@@ -116,13 +116,18 @@ endif
 
 STUB_APP_OBJS0   += $(addprefix ../py/, $(PY_O_BASENAME))
 
+STUB_APP_OBJS0   += $(addprefix mods/,\
+                      modusocket.o \
+                      )
+
 STUB_BUILD_DIRS	 += $(STUBDOM_BUILD_DIR)/lib/utils       \
                     $(STUBDOM_BUILD_DIR)/lib/libc        \
                     $(STUBDOM_BUILD_DIR)/lib/mp-readline \
                     $(STUBDOM_BUILD_DIR)/build           \
                     $(STUBDOM_BUILD_DIR)/py              \
                     $(STUBDOM_BUILD_DIR)/extmod          \
-                    $(STUBDOM_BUILD_DIR)/lib/netutils
+                    $(STUBDOM_BUILD_DIR)/lib/netutils    \
+                    $(STUBDOM_BUILD_DIR)/mini-python/mods
 
 ifeq ($(CONFIG_FATFS),y)
 STUB_BUILD_DIRS  += $(STUBDOM_BUILD_DIR)/lib/fatfs \
@@ -144,7 +149,6 @@ QSTR_GEN_EXTRA_CFLAGS += -D__QSTR_EXTRACT -DN_X64 -DN_X86 -DN_THUMB -DN_ARM
 QSTR_GEN_EXTRA_CFLAGS += -I$(BUILD)/tmp
 MICROPY_FORCE_32BIT = 0
 QSTR_DEFS = qstrdefsport.h
-OBJ = $(PY_O) $(addprefix $(BUILD)/, $(SRC_C:.c=.o))
 MPCONFIGPORT_MK = $(wildcard mpconfigport.mk)
 
 $(STUB_APP_OBJS): | $(HEADER_BUILD)/qstrdefs.generated.h $(HEADER_BUILD)/mpversion.h

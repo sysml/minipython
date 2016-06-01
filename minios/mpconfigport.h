@@ -158,8 +158,12 @@
 #define MICROPY_EMERGENCY_EXCEPTION_BUF_SIZE  (256)
 #define MICROPY_ASYNC_KBD_INTR      (1)
 
-// type definitions for the specific machine
+// extra built in modules to add to the list of known ones
+extern const struct _mp_obj_module_t mp_module_usocket;
+#define MICROPY_PORT_BUILTIN_MODULES \
+  { MP_OBJ_NEW_QSTR(MP_QSTR_usocket), (mp_obj_t)&mp_module_usocket }, \
 
+// type definitions for the specific machine
 // assume that if we already defined the obj repr then we also defined types
 #ifndef MICROPY_OBJ_REPR
 #ifdef __LP64__

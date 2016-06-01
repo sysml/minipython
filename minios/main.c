@@ -215,7 +215,7 @@ void print_banner() {
   printk("                                __/ |                           \n");
   printk("                               |___/                            \n");
   printk("\n");
-  printk("Copyright(C) 2013-2016 NEC Europe Ltd.                          \n");
+  printk("Copyright(C)      2016 NEC Europe Ltd.                          \n");
   printk("Authors: Felipe Huici  <felipe.huici@neclab.eu>                 \n");  
   printk("         Simon Kuenzer <simon.kuenzer@neclab.eu>                \n");  
   printk("         Filipe Manco  <filipe.manco@neclab.eu>                 \n");
@@ -282,8 +282,9 @@ int main(int argc, char **argv) {
       printk("Error while mounting drive: %d\n", res);
       return -1;
     }
-    do_file("testcar.py");    
+    //    do_file("http_server.py");    
 #endif
+    do_str("import usocket\ns = usocket.socket()\n");
     //do_str("import lwip\nlwip.reset()\neth = lwip.ether('172.64.0.100', '255.255.255.0', '0.0.0.0')\nwhile 1: eth.poll()\n");
 
     /* broken "built-in" modules from:

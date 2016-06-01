@@ -23,8 +23,6 @@ PY_QSTR_DEFS = $(PY_SRC)/qstrdefs.h
 
 QSTR_DEFS_COLLECTED = $(HEADER_BUILD)/qstrdefs.collected.h
 
-#SED = sed
-
 # py object files
 PY_O_BASENAME = \
 	mpstate.o \
@@ -182,16 +180,15 @@ SRC_MOD += $(addprefix $(LWIP_ROOT)/src/lwip/,\
         )
 endif
 
+APP_MODS_SRC_C = $(addprefix mods/,\
+	modusocket.c \
+        )
+
 # prepend the build destination prefix to the py object files
 PY_O = $(addprefix $(PY_BUILD)/, $(PY_O_BASENAME))
 
 # Sources that may contain qstrings
 SRC_QSTR_IGNORE = nlr% emitnx% emitnthumb% emitnarm%
-SRC_QSTR = $(SRC_MOD) $(addprefix ../py/,$(filter-out $(SRC_QSTR_IGNORE),$(PY_O_BASENAME:.o=.c)) emitnative.c)
+SRC_QSTR = $(SRC_MOD) $(APP_MODS_SRC_C) $(addprefix ../py/,$(filter-out $(SRC_QSTR_IGNORE),$(PY_O_BASENAME:.o=.c)) emitnative.c)
 
 PY_SRC ?= $(TOP)/py
-
-#ECHO = @echo
-#PYTHON = python
-
-#MKENV_INCLUDED = 1
