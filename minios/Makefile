@@ -74,7 +74,8 @@ endif
 ifeq ($(CONFIG_MP_LWIP_DEBUG),y)
 STUB_CFLAGS      += -DLWIP_IF_DEBUG                \
 		    -DLWIP_SERVICE_DEBUG           \
-		    -DLWIP_IP_DEBUG
+		    -DLWIP_IP_DEBUG                \
+		    -DLWIP_SYS_DEBUG              
 endif
 
 STUB_APP_OBJS0   := main.o                         \

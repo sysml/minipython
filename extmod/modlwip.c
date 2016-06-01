@@ -82,6 +82,8 @@ STATIC lwip_ether_obj_t lwip_ether_obj;
 STATIC const mp_obj_type_t lwip_ether_type;
 
 
+STATIC bool LWIP_INIT = false;
+
 STATIC mp_obj_t lwip_ether_make_new(mp_obj_t type_in, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *args) {
   struct netif *niret;
   
@@ -622,6 +624,11 @@ mp_obj_t lwip_socket_make_new(const mp_obj_type_t *type, mp_uint_t n_args,
     mp_uint_t n_kw, const mp_obj_t *args) {
     mp_arg_check_num(n_args, n_kw, 0, 4, false);
 
+    if (!LWIP_INIT) {
+      lwip_init();
+      LWIP_INIT = true;      
+    }
+    
     lwip_socket_obj_t *socket = m_new_obj_with_finaliser(lwip_socket_obj_t);
     socket->base.type = (mp_obj_t)&lwip_socket_type;
     socket->domain = MOD_NETWORK_AF_INET;
@@ -635,7 +642,7 @@ mp_obj_t lwip_socket_make_new(const mp_obj_type_t *type, mp_uint_t n_args,
     }
 
     switch (socket->type) {
-    case MOD_NETWORK_SOCK_STREAM: socket->pcb.tcp = tcp_new(); break;
+        case MOD_NETWORK_SOCK_STREAM: socket->pcb.tcp = tcp_new(); break;
         case MOD_NETWORK_SOCK_DGRAM: socket->pcb.udp = udp_new(); break;
         //case MOD_NETWORK_SOCK_RAW: socket->pcb.raw = raw_new(); break;
         default: nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(EINVAL)));
