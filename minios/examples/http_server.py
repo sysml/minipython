@@ -5,23 +5,24 @@ except:
 
 
 CONTENT = b"""\
-HTTP/1.0 200 OK
+HTTP/1.1 200 OK
+Content-Length: 23
 
-Hello #%d from MicroPython!
+Hello from MicroPython!
 """
 
 def main(use_stream=False):
     s = socket.socket()
 
     # Binding to all interfaces - server will be accessible to other hosts!
-    ai = socket.getaddrinfo("0.0.0.0", 8080)
+    ai = socket.getaddrinfo("172.64.0.100", 8080)
     print("Bind address info:", ai)
     addr = ai[0][-1]
 
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.bind(addr)
     s.listen(5)
-    print("Listening, connect your browser to http://<this_host>:8080/")
+    print("Listening, connect your browser to http://172.64.0.100:8080/")
 
     counter = 0
     while True:
@@ -35,10 +36,10 @@ def main(use_stream=False):
             # MicroPython socket objects support stream (aka file) interface
             # directly.
             print(client_s.read(4096))
-            client_s.write(CONTENT % counter)
+            client_s.write(CONTENT)
         else:
             print(client_s.recv(4096))
-            client_s.send(CONTENT % counter)
+            client_s.send(CONTENT)
         client_s.close()
         counter += 1
         print()

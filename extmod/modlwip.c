@@ -68,6 +68,9 @@
 #include "lwip/sio.h"
 #endif
 
+STATIC bool LWIP_INIT = false;
+STATIC bool LWIP_ETHER_INIT = false;
+
 typedef struct _lwip_ether_obj_t {
   mp_obj_base_t   base;
   struct eth_addr mac;
@@ -80,9 +83,6 @@ typedef struct _lwip_ether_obj_t {
 // Ether object is unique for now. Possibly can fix this later. FIXME
 STATIC lwip_ether_obj_t lwip_ether_obj;
 STATIC const mp_obj_type_t lwip_ether_type;
-
-
-STATIC bool LWIP_INIT = false;
 
 STATIC mp_obj_t lwip_ether_make_new(mp_obj_t type_in, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *args) {
   struct netif *niret;
@@ -323,11 +323,7 @@ typedef struct _lwip_socket_obj_t {
 */
 
 static inline void poll_sockets(void) {
-#ifdef MICROPY_EVENT_POLL_HOOK
-    MICROPY_EVENT_POLL_HOOK;
-#else
-    mp_hal_delay_ms(1);
-#endif
+    netfrontif_poll(&lwip_ether_obj.netif);
 }
 
 /*******************************************************************************/
@@ -680,6 +676,7 @@ mp_obj_t lwip_socket_close(mp_obj_t self_in) {
     if (socket->pcb.tcp == NULL) {
         return mp_const_none;
     }
+
     switch (socket->type) {
         case MOD_NETWORK_SOCK_STREAM: {
             if (socket->pcb.tcp->state == LISTEN) {
@@ -694,6 +691,7 @@ mp_obj_t lwip_socket_close(mp_obj_t self_in) {
         case MOD_NETWORK_SOCK_DGRAM: udp_remove(socket->pcb.udp); break;
         //case MOD_NETWORK_SOCK_RAW: raw_remove(socket->pcb.raw); break;
     }
+    
     socket->pcb.tcp = NULL;
     socket->state = _ERR_BADF;
     if (socket->incoming.pbuf != NULL) {
@@ -709,7 +707,42 @@ mp_obj_t lwip_socket_close(mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(lwip_socket_close_obj, lwip_socket_close);
 
+
+void lwip_addif(const char *ip, const char *mask, const char *gw)
+{
+    struct netif *niret;
+
+    /* Already added */
+    if (LWIP_ETHER_INIT) return;
+
+    lwip_ether_obj.base.type = &lwip_ether_type;
+    if (!ipaddr_aton(ip, &lwip_ether_obj.ip)) {
+      nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "not a valid IP address"));
+    }
+
+    if (!ipaddr_aton(mask, &lwip_ether_obj.mask)) {
+      nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "not a valid mask"));
+    }
+
+    if (!ipaddr_aton(gw, &lwip_ether_obj.gw)) {
+    nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "not a valid gateway"));
+    }
+
+    niret = netif_add(&lwip_ether_obj.netif,
+		      &lwip_ether_obj.ip,
+		      &lwip_ether_obj.mask,
+		      &lwip_ether_obj.gw,
+		      NULL,
+		      netfrontif_init,
+		      ethernet_input);
+    netif_set_default(&lwip_ether_obj.netif);
+    netif_set_up(&lwip_ether_obj.netif);
+    LWIP_ETHER_INIT = true;
+}
+    
+
 mp_obj_t lwip_socket_bind(mp_obj_t self_in, mp_obj_t addr_in) {
+    char ip_str[16];    
     lwip_socket_obj_t *socket = self_in;
 
     uint8_t ip[NETUTILS_IPV4ADDR_BUFSIZE];
@@ -718,6 +751,11 @@ mp_obj_t lwip_socket_bind(mp_obj_t self_in, mp_obj_t addr_in) {
     ip_addr_t bind_addr;
     IP4_ADDR(&bind_addr, ip[0], ip[1], ip[2], ip[3]);
 
+    /* Add interface                              */
+    /* HACK: assume /24 network and gw is 0.0.0.0 */
+    snprintf(ip_str, 16, "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
+    lwip_addif(ip_str, "255.255.255.0", "0.0.0.0");
+      
     err_t err = ERR_ARG;
     switch (socket->type) {
         case MOD_NETWORK_SOCK_STREAM: {
@@ -787,7 +825,7 @@ mp_obj_t lwip_socket_accept(mp_obj_t self_in) {
             }
         } else {
             while (socket->incoming.connection == NULL) {
-                poll_sockets();
+	      poll_sockets();
             }
         }
     }
@@ -840,6 +878,9 @@ mp_obj_t lwip_socket_connect(mp_obj_t self_in, mp_obj_t addr_in) {
     ip_addr_t dest;
     IP4_ADDR(&dest, ip[0], ip[1], ip[2], ip[3]);
 
+    /* BROKEN: need to add interface here (lwip_addif) but don't know which
+       address to use. Probably should get this from xen cfg file */
+    
     err_t err = ERR_ARG;
     switch (socket->type) {
         case MOD_NETWORK_SOCK_STREAM: {
@@ -907,12 +948,10 @@ void lwip_socket_check_connected(lwip_socket_obj_t *socket) {
 mp_obj_t lwip_socket_send(mp_obj_t self_in, mp_obj_t buf_in) {
     lwip_socket_obj_t *socket = self_in;
     int _errno;
-
     lwip_socket_check_connected(socket);
 
     mp_buffer_info_t bufinfo;
     mp_get_buffer_raise(buf_in, &bufinfo, MP_BUFFER_READ);
-
     mp_uint_t ret = 0;
     switch (socket->type) {
         case MOD_NETWORK_SOCK_STREAM: {
@@ -927,7 +966,7 @@ mp_obj_t lwip_socket_send(mp_obj_t self_in, mp_obj_t buf_in) {
     if (ret == -1) {
         nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(_errno)));
     }
-
+    
     return mp_obj_new_int_from_uint(ret);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(lwip_socket_send_obj, lwip_socket_send);
@@ -946,6 +985,7 @@ mp_obj_t lwip_socket_recv(mp_obj_t self_in, mp_obj_t len_in) {
     switch (socket->type) {
         case MOD_NETWORK_SOCK_STREAM: {
             ret = lwip_tcp_receive(socket, (byte*)vstr.buf, len, &_errno);
+	    
             break;
         }
         case MOD_NETWORK_SOCK_DGRAM: {
@@ -1168,6 +1208,7 @@ mp_uint_t lwip_socket_write(mp_obj_t self_in, const void *buf, mp_uint_t size, i
         case MOD_NETWORK_SOCK_DGRAM:
             return lwip_udp_send(socket, buf, size, NULL, 0, errcode);
     }
+
     // Unreachable
     return MP_STREAM_ERROR;
 }
@@ -1348,7 +1389,7 @@ mp_obj_t lwip_getaddrinfo(mp_obj_t host_in, mp_obj_t port_in) {
         // values, to differentiate from normal errno's at least in such way.
         nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(state.status)));
     }
-
+    
     mp_obj_tuple_t *tuple = mp_obj_new_tuple(5, NULL);
     tuple->items[0] = MP_OBJ_NEW_SMALL_INT(MOD_NETWORK_AF_INET);
     tuple->items[1] = MP_OBJ_NEW_SMALL_INT(MOD_NETWORK_SOCK_STREAM);
