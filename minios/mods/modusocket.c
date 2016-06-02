@@ -1,12 +1,8 @@
-#include "../../extmod/modlwip.h"
+#include "extmod/modlwip.h"
 #include "py/obj.h"
+#include "lwip/sockets.h"
 
-#define IPPROTO_TCP             6
-#define IPPROTO_UDP             17
-#define SL_SEC_SOCKET           (100)
-#define  AF_INET                2
-#define  SOCK_STREAM            1
-#define  SOCK_DGRAM             2
+#define SEC_SOCKET           100    /* Secured Socket Layer (SSL,TLS)     */
 
 STATIC const mp_map_elem_t socket_locals_dict_table[] = {
   { MP_OBJ_NEW_QSTR(MP_QSTR___del__),         (mp_obj_t)&lwip_socket_close },
@@ -57,8 +53,10 @@ STATIC const mp_map_elem_t mp_module_usocket_globals_table[] = {
 
   { MP_OBJ_NEW_QSTR(MP_QSTR_SOCK_STREAM),     MP_OBJ_NEW_SMALL_INT(SOCK_STREAM) },
   { MP_OBJ_NEW_QSTR(MP_QSTR_SOCK_DGRAM),      MP_OBJ_NEW_SMALL_INT(SOCK_DGRAM) },
+  { MP_OBJ_NEW_QSTR(MP_QSTR_SO_REUSEADDR),      MP_OBJ_NEW_SMALL_INT(SO_REUSEADDR) },  
 
-  { MP_OBJ_NEW_QSTR(MP_QSTR_IPPROTO_SEC),     MP_OBJ_NEW_SMALL_INT(SL_SEC_SOCKET) },
+  { MP_OBJ_NEW_QSTR(MP_QSTR_IPPROTO_SEC),     MP_OBJ_NEW_SMALL_INT(SEC_SOCKET) },
+  { MP_OBJ_NEW_QSTR(MP_QSTR_SOL_SOCKET),      MP_OBJ_NEW_SMALL_INT(SOL_SOCKET) },  
   { MP_OBJ_NEW_QSTR(MP_QSTR_IPPROTO_TCP),     MP_OBJ_NEW_SMALL_INT(IPPROTO_TCP) },
   { MP_OBJ_NEW_QSTR(MP_QSTR_IPPROTO_UDP),     MP_OBJ_NEW_SMALL_INT(IPPROTO_UDP) },
 };
