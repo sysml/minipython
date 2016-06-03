@@ -69,7 +69,7 @@
 #define MICROPY_STREAMS_NON_BLOCK   (1)
 #define MICROPY_OPT_COMPUTED_GOTO   (1)
 #define MICROPY_OPT_CACHE_MAP_LOOKUP_IN_BYTECODE (1)
-#define MICROPY_CAN_OVERRIDE_BUILTINS (1)
+#define MICROPY_CAN_OVERRIDE_BUILTINS (0)
 #define MICROPY_PY_FUNCTION_ATTRS   (1)
 #define MICROPY_PY_DESCRIPTORS      (1)
 #define MICROPY_PY_BUILTINS_STR_UNICODE (1)
@@ -157,6 +157,11 @@
 #define MICROPY_ENABLE_EMERGENCY_EXCEPTION_BUF   (1)
 #define MICROPY_EMERGENCY_EXCEPTION_BUF_SIZE  (256)
 #define MICROPY_ASYNC_KBD_INTR      (1)
+
+//extra built in names to add to the global namespace
+extern const struct _mp_obj_fun_builtin_t mp_builtin_open_obj;
+#define MICROPY_PORT_BUILTINS					\
+  { MP_ROM_QSTR(MP_QSTR_open), MP_ROM_PTR(&mp_builtin_open_obj) }, \
 
 // extra built in modules to add to the list of known ones
 extern const struct _mp_obj_module_t mp_module_usocket;

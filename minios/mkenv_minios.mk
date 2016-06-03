@@ -180,6 +180,8 @@ SRC_MOD += $(addprefix $(LWIP_ROOT)/src/lwip/,\
         )
 endif
 
+SRC_MOD += builtin_open.c \
+
 APP_MODS_SRC_C = $(addprefix mods/,\
 	modusocket.c \
         )

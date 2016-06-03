@@ -81,6 +81,7 @@ endif
 STUB_APP_OBJS0   := main.o                         \
 		    unix_mphal.o                   \
 		    alloc.o                        \
+		    builtin_open.o                 \
 		    gccollect.o                    \
                     ../lib/utils/printf.o          \
                     ../lib/utils/pyexec.o          \
