@@ -282,8 +282,9 @@ int main(int argc, char **argv) {
       printk("Error while mounting drive: %d\n", res);
       return -1;
     }
-    do_file("http_server.py");    
+    do_file("http_server.py");
 #endif
+    //do_str("f = open('index.html', 'r')\ns = f.read()\nprint(s)\nf.close()\n");
     //    do_str("import usocket\ns = usocket.socket()\nai = socket.getaddrinfo('0.0.0.0', 8080)\n");
     //do_str("import lwip\nlwip.reset()\neth = lwip.ether('172.64.0.100', '255.255.255.0', '0.0.0.0')\nwhile 1: eth.poll()\n");
 

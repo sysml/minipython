@@ -10,8 +10,14 @@ Content-Length: 23
 
 Hello from MicroPython!
 """
+def readfile(filename):
+    f = open(filename, 'r')
+    s = f.read()
+    f.close()    
+    return s
 
 def main(use_stream=False):
+  
     s = socket.socket()
 
     # Binding to all interfaces - server will be accessible to other hosts!
@@ -26,6 +32,7 @@ def main(use_stream=False):
 
     counter = 0
     while True:
+        f = readfile("index.html")        
         res = s.accept()
         client_s = res[0]
         client_addr = res[1]
@@ -36,10 +43,10 @@ def main(use_stream=False):
             # MicroPython socket objects support stream (aka file) interface
             # directly.
             print(client_s.read(4096))
-            client_s.write(CONTENT)
+            client_s.write(f)
         else:
             print(client_s.recv(4096))
-            client_s.send(CONTENT)
+            client_s.send(f)
         client_s.close()
         counter += 1
         print()
