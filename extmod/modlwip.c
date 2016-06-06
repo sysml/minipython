@@ -48,6 +48,7 @@
 #include "lwip/inet.h"
 #include <mini-os/lwip-net.h>
 #include "modlwip.h"
+#include "xenbus.h"
 
 #if 0 // print debugging info
 #define DEBUG_printf DEBUG_printf
@@ -85,7 +86,6 @@ STATIC lwip_ether_obj_t lwip_ether_obj;
 STATIC const mp_obj_type_t lwip_ether_type;
 
 STATIC mp_obj_t lwip_ether_make_new(mp_obj_t type_in, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *args) {
-  struct netif *niret;
   
   mp_arg_check_num(n_args, n_kw, 3, 3, false);
   
@@ -101,8 +101,13 @@ STATIC mp_obj_t lwip_ether_make_new(mp_obj_t type_in, mp_uint_t n_args, mp_uint_
     nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "not a valid gateway"));
   }
 
-  niret = netif_add(&lwip_ether_obj.netif, &lwip_ether_obj.ip, &lwip_ether_obj.mask, &lwip_ether_obj.gw, NULL,
-		    netfrontif_init, ethernet_input);
+  netif_add(&lwip_ether_obj.netif,
+	    &lwip_ether_obj.ip,
+	    &lwip_ether_obj.mask,
+	    &lwip_ether_obj.gw,
+	    NULL,
+	    netfrontif_init,
+	    ethernet_input);
   netif_set_default(&lwip_ether_obj.netif);
   netif_set_up(&lwip_ether_obj.netif);
   
@@ -707,37 +712,140 @@ mp_obj_t lwip_socket_close(mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(lwip_socket_close_obj, lwip_socket_close);
 
-
-void lwip_addif(const char *ip, const char *mask, const char *gw)
+/* Same as version in xenbus.h except this one won't print
+ * an error when it doesn't find an entry, so it can be used
+ * as a form of fstat */
+int lwip_xenbus_read_integer(const char *path)
 {
-    struct netif *niret;
+  char *res, *buf;
+  int t;
+
+  res = xenbus_read(XBT_NIL, path, &buf);
+  if (res) {
+    free(res);
+    return -1;
+  }
+  sscanf(buf, "%d", &t);
+  free(buf);
+  return t;
+}
+
+/* Searches through the domain's available vifs to check for a given ip
+ * address. If the ip is 0.0.0.0, res will be set to the ip address of
+ * the first vif for which an ip is set; if no vif has an ip set then the
+ * function resturns -1. If the ip is something other than 0.0.0.0, the
+ * function checks to see if there's a vif with an IP that matches it and
+ * returns 0 on success and -1 on failure */
+int lwip_find_ip(const char *ip, char *found_ip) {
+  char path[256];
+  char *msg, *res;
+  int n_vifs, id, i, ret;
+
+  /* Get dom ID */
+  snprintf(path, sizeof(path), "domid");
+  id = lwip_xenbus_read_integer("domid");
+  if (id == -1) {
+    printk("modlwip: Could not retrieve dom id from Xenstore!\n");
+    return -1;
+  }
+
+  /* Find out how many vifs the domain has */
+  n_vifs = 0;
+  while (1) {
+    snprintf(path, sizeof(path), "/local/domain/0/backend/vif/%d/%d", id, n_vifs);
+    ret = lwip_xenbus_read_integer(path);
+    if (ret == -1)
+      break;
+    n_vifs++;
+  }
+    
+  /* We use dir only to know how many vifs there are. For each
+   * we check if an entry "ip" exists. If it does and the given
+   * IP is 0.0.0.0, we return the first entry. If it the IP is 
+   * something else, we try to match it to the entry's IP. If no
+   * ip entry exists we skip the vif. */
+  for (i = 0; i <= n_vifs; i++) {
+
+    /* See if this vif has an ip entry */
+    snprintf(path,
+	     sizeof(path),
+	     "/local/domain/0/backend/vif/%d/%d/ip",
+	     id,
+	     i);
+    msg = xenbus_read(XBT_NIL, path, &res);
+
+    /* It does! */
+    if (!msg) {
+      /* If given ip is 0.0.0.0, return any ip, i.e., the one we
+       * just found. If multiple vifs exist then the last one with
+       * an ip is used. */
+      if (strcmp(ip, "0.0.0.0") == 0) {
+	strncpy(found_ip, res, strlen(res));
+	free(msg);
+	free(res);
+	return 0;
+      }
+      /* See if this vif's ip matches the given ip. If it does,
+         return success (i.e., no need to search for other vifs) */
+      else if (strcmp(ip, res) == 0) {
+	strncpy(found_ip, res, strlen(res));
+	free(msg);
+	free(res);
+	return 0;
+      }
+    }
+    else {
+      /* We don't free res since xenbus_read sets it to NULL on error */
+      free(msg);
+    }
+  }
+
+  return -1;
+}
+
+/* Assumes mask is /24 and gw 0.0.0.0 */
+int lwip_addif(const char *ip) {
+    char res[256];
+    int ret;
+    
+    ip4_addr_t mask;
+    ip4_addr_t gw;
+    
+    IP4_ADDR(&mask, 255, 255, 255,   0);
+    IP4_ADDR(&gw,     0,   0,   0,   0);
+    mask.addr = htonl(IN_CLASSC_NET);
+    
+    ret = lwip_find_ip(ip, res);
+    if (ret == -1) {
+      printk("modlwip: Error, could not find or match required ip!\n");
+      return -1;
+    }
 
     /* Already added */
-    if (LWIP_ETHER_INIT) return;
+    if (LWIP_ETHER_INIT) return 0;
 
     lwip_ether_obj.base.type = &lwip_ether_type;
-    if (!ipaddr_aton(ip, &lwip_ether_obj.ip)) {
+    if (!ipaddr_aton(res, &lwip_ether_obj.ip)) {
       nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "not a valid IP address"));
     }
 
-    if (!ipaddr_aton(mask, &lwip_ether_obj.mask)) {
-      nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "not a valid mask"));
-    }
-
-    if (!ipaddr_aton(gw, &lwip_ether_obj.gw)) {
-    nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "not a valid gateway"));
-    }
-
-    niret = netif_add(&lwip_ether_obj.netif,
+    lwip_ether_obj.mask = mask;
+    lwip_ether_obj.gw = gw;    
+    
+    if (!netif_add(&lwip_ether_obj.netif,
 		      &lwip_ether_obj.ip,
 		      &lwip_ether_obj.mask,
 		      &lwip_ether_obj.gw,
 		      NULL,
 		      netfrontif_init,
-		      ethernet_input);
+		      ethernet_input)) {
+      return -1;
+    }
+    
     netif_set_default(&lwip_ether_obj.netif);
     netif_set_up(&lwip_ether_obj.netif);
     LWIP_ETHER_INIT = true;
+    return 0;
 }
     
 
@@ -751,10 +859,12 @@ mp_obj_t lwip_socket_bind(mp_obj_t self_in, mp_obj_t addr_in) {
     ip_addr_t bind_addr;
     IP4_ADDR(&bind_addr, ip[0], ip[1], ip[2], ip[3]);
 
-    /* Add interface                              */
-    /* HACK: assume /24 network and gw is 0.0.0.0 */
+    /* Add interface */
     snprintf(ip_str, 16, "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
-    lwip_addif(ip_str, "255.255.255.0", "0.0.0.0");
+    if (lwip_addif(ip_str) == -1) {
+      printk("modlwip: Error while adding interface!\n");
+      return NULL;
+    }
       
     err_t err = ERR_ARG;
     switch (socket->type) {
@@ -865,6 +975,8 @@ mp_obj_t lwip_socket_accept(mp_obj_t self_in) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(lwip_socket_accept_obj, lwip_socket_accept);
 
 mp_obj_t lwip_socket_connect(mp_obj_t self_in, mp_obj_t addr_in) {
+
+    char ip_str[16];    
     lwip_socket_obj_t *socket = self_in;
 
     if (socket->pcb.tcp == NULL) {
@@ -878,8 +990,12 @@ mp_obj_t lwip_socket_connect(mp_obj_t self_in, mp_obj_t addr_in) {
     ip_addr_t dest;
     IP4_ADDR(&dest, ip[0], ip[1], ip[2], ip[3]);
 
-    /* BROKEN: need to add interface here (lwip_addif) but don't know which
-       address to use. Probably should get this from xen cfg file */
+    /* Add interface */
+    snprintf(ip_str, 16, "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
+    if (lwip_addif(ip_str) == -1) {
+      printk("modlwip: Error while adding interface!\n");
+      return NULL;
+    }
     
     err_t err = ERR_ARG;
     switch (socket->type) {

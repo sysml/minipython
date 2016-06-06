@@ -141,6 +141,7 @@ STUB_BUILD_DIRS  +=  $(STUBDOM_BUILD_DIR)/$(STUBDOM_NAME)/shfs
 endif
 
 include $(MINIOS_ROOT)/stub.mk
+CFLAGS                  += -std=gnu11
 
 
 ######################################################################
