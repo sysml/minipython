@@ -33,6 +33,8 @@ extern mp_lexer_t *fat_vfs_lexer_new_from_file(const char *filename);
 extern mp_import_stat_t fat_vfs_import_stat(const char *path);
 #endif
 
+#define PATHLIST_SEP_CHAR ':'
+
 extern void mp_unix_mark_exec(void);
 
 // Command line options, with their defaults
@@ -262,6 +264,31 @@ int main(int argc, char **argv) {
 
     mp_init();
 
+    
+    char *path = "lib";
+    mp_uint_t path_num = 1; // [0] is for current dir (or base dir of the script)
+    for (char *p = path; p != NULL; p = strchr(p, PATHLIST_SEP_CHAR)) {
+      path_num++;
+      if (p != NULL) {
+	p++;
+      }
+    }
+    mp_obj_list_init(MP_OBJ_TO_PTR(mp_sys_path), path_num);
+    mp_obj_t *path_items;
+    mp_obj_list_get(mp_sys_path, &path_num, &path_items);
+    path_items[0] = MP_OBJ_NEW_QSTR(MP_QSTR_);
+    {
+      char *p = path;
+      for (mp_uint_t i = 1; i < path_num; i++) {
+	char *p1 = strchr(p, PATHLIST_SEP_CHAR);
+	if (p1 == NULL) {
+	  p1 = p + strlen(p);
+	}
+	path_items[i] = MP_OBJ_NEW_QSTR(qstr_from_strn(p, p1 - p));
+	p = p1 + 1;
+      }
+      }
+    
 #if SHFS_ENABLE    
     init_shfs();
     ret = mount_shfs(&id, 1);   
@@ -282,8 +309,11 @@ int main(int argc, char **argv) {
       printk("Error while mounting drive: %d\n", res);
       return -1;
     }
-    do_file("http_server.py");
+    //do_file("http_server.py");
+    //do_file("testcar.py");
+    do_file("testimport.py");
 #endif
+    //do_str("import sys\nimport socket\n");
     //do_str("f = open('index.html', 'r')\ns = f.read()\nprint(s)\nf.close()\n");
     //    do_str("import usocket\ns = usocket.socket()\nai = socket.getaddrinfo('0.0.0.0', 8080)\n");
     //do_str("import lwip\nlwip.reset()\neth = lwip.ether('172.64.0.100', '255.255.255.0', '0.0.0.0')\nwhile 1: eth.poll()\n");
