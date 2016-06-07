@@ -57,3 +57,35 @@ Finally, create the VM with:
     $ xl create -c mini-python.xen
 
 
+## MicroPython libs
+
+To add https://github.com/micropython/micropython-lib to mini-python, edit
+tools/libimport.py and set the MICROPY_LIB_DIR and MINIPYTHON_TARGET_DIR
+variables, then
+
+    python tools/libimport.py
+
+The program will print which modules it actually copied (it ignores
+placeholder libraries, i.e., those with empty .py files). As of June 2016
+the output was:
+
+Added libs:
+=====================
+['_libc', '_markupbase', 'abc', 'argparse', 'asyncio_slow', 'base64', 'binascii', 'bisect', 'cgi', 'cmd', 'collections.defaultdict', 'collections.deque', 'collections', 'concurrent.futures', 'contextlib', 'copy', 'curses.ascii', 'email.charset', 'email.encoders', 'email.errors', 'email.feedparser', 'email.header', 'email.internal', 'email.message', 'email.parser', 'email.utils', 'errno', 'fcntl', 'ffilib', 'fnmatch', 'functools', 'getopt', 'glob', 'gzip', 'hashlib', 'heapq', 'hmac', 'html.entities', 'html.parser', 'html', 'http.client', 'inspect', 'io', 'itertools', 'json', 'keyword', 'locale', 'logging', 'machine', 'multiprocessing', 'operator', 'os.path', 'os', 'pickle', 'pkg_resources', 'pkgutil', 'pprint', 'pyb', 'pystone', 'pystone_lowmem', 'quopri', 'select', 'shutil', 'signal', 'socket', 'sqlite3', 'stat', 'string', 'struct', 'test.pystone', 'test.support', 'textwrap', 'time', 'timeit', 'traceback', 'tty', 'types', 'uasyncio.core', 'uasyncio.queues', 'uasyncio', 'ucontextlib', 'ucurses', 'unicodedata', 'unittest', 'upip', 'upysh', 'urequests', 'urllib.parse', 'urllib.urequest', 'utarfile', 'uu', 'warnings', 'weakref', 'xmltok']
+
+
+Ignored libs:
+=====================
+['binhex', 'calendar', 'csv', 'datetime', 'dbm', 'decimal', 'difflib', 'formatter', 'fractions', 'ftplib', 'getpass', 'gettext', 'imaplib', 'imp', 'ipaddress', 'mailbox', 'mailcap', 'mimetypes', 'nntplib', 'numbers', 'optparse', 'pathlib', 'pdb', 'pickletools', 'platform', 'poplib', 'posixpath', 'profile', 'pty', 'queue', 'random', 'reprlib', 'runpy', 'sched', 'selectors', 'shelve', 'shlex', 'smtplib', 'socketserver', 'statistics', 'stringprep', 'subprocess', 'tarfile', 'telnetlib', 'tempfile', 'threading', 'trace', 'urllib', 'uuid', 'zipfile']
+
+The output under "Added libs" can be copied into examples/test_tryexcept.py to
+see which modules will actually run under mini-python. Here's sample output
+from that program:
+
+Working modules:
+===========================
+['abc', 'argparse', 'binascii', 'bisect', 'cmd', 'collections', 'copy', 'errno', 'functools', 'getopt', 'gzip', 'hashlib', 'heapq', 'hmac', 'html', 'inspect', 'io', 'itertools', 'json', 'keyword', 'locale', 'machine', 'operator', 'os', 'pickle', 'pkgutil', 'pprint', 'pyb', 'quopri', 'select', 'shutil', 'socket', 'stat', 'string', 'struct', 'traceback', 'types', 'uasyncio', 'ucontextlib', 'ucurses', 'unicodedata', 'unittest', 'urequests', 'utarfile', 'uu', 'warnings', 'weakref', 'xmltok']
+
+Broken modules:
+===========================
+['_libc', '_markupbase', 'asyncio_slow', 'base64', 'cgi', 'collections.defaultdict', 'collections.deque', 'concurrent.futures', 'contextlib', 'curses.ascii', 'email.charset', 'email.encoders', 'email.errors', 'email.feedparser', 'email.header', 'email.internal', 'email.message', 'email.parser', 'email.utils', 'fcntl', 'ffilib', 'fnmatch', 'glob', 'html.entities', 'html.parser', 'http.client', 'logging', 'multiprocessing', 'os.path', 'pkg_resources', 'pystone', 'pystone_lowmem', 'signal', 'sqlite3', 'test.pystone', 'test.support', 'textwrap', 'time', 'timeit', 'tty', 'uasyncio.core', 'uasyncio.queues', 'upip', 'upysh', 'urllib.parse', 'urllib.urequest']
