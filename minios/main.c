@@ -1,3 +1,18 @@
+/*
+ * modules from:
+ * http://docs.micropython.org/en/latest/pyboard/library/index.html 
+ *
+ * - non built-in (see builtin.h):
+ *   unix/moduselect.c
+ *   unix/modos.c || ./cc3200/mods/moduos.c
+ *   unix/modtime.c || ./cc3200/mods/modutime.c
+ *
+ * - ignored
+ *   machine, network, pyb
+ *
+ * - need external lib support
+ *   ussl: missing crypto.h, ssl.h, etc. Enable in mpconfigport.h
+ */
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -244,29 +259,9 @@ void nlr_jump_fail(void *val) {
   printf("FATAL: uncaught NLR %p\n", val);
   exit(1);
 }
-
-int main(int argc, char **argv) {
-  
-#if SHFS_ENABLE
-    int id = 51712;  
-    int ret = 0;
-#endif
-    
-    print_banner();  
-
-    mp_stack_ctrl_init();
-    mp_stack_set_limit(40000 * (BYTES_PER_WORD / 4));
-
-#if MICROPY_ENABLE_GC
-    char *heap = malloc(heap_size);
-    gc_init(heap, heap + heap_size);
-#endif
-
-    mp_init();
-
-    
-    char *path = "lib";
-    mp_uint_t path_num = 1; // [0] is for current dir (or base dir of the script)
+void pythonpath_append(const char *path) {
+  //    char *path = "lib";
+    mp_uint_t path_num = 1; 
     for (char *p = path; p != NULL; p = strchr(p, PATHLIST_SEP_CHAR)) {
       path_num++;
       if (p != NULL) {
@@ -287,15 +282,38 @@ int main(int argc, char **argv) {
 	path_items[i] = MP_OBJ_NEW_QSTR(qstr_from_strn(p, p1 - p));
 	p = p1 + 1;
       }
-      }
-    
-#if SHFS_ENABLE    
+    }
+}
+
+int main(int argc, char **argv) {
+  
+    /* mini-python banner */
+    print_banner();  
+
+    /* init stack */
+    mp_stack_ctrl_init();
+    mp_stack_set_limit(40000 * (BYTES_PER_WORD / 4));
+
+    /* init garbage collector */
+#if MICROPY_ENABLE_GC
+    char *heap = malloc(heap_size);
+    gc_init(heap, heap + heap_size);
+#endif
+
+    /* init micropython */
+    mp_init();
+
+    /* append dirs to python path (NO leading slash please) */
+    pythonpath_append("lib");
+
+    /* add filesystem support, either SHFS or FAT */
+#if SHFS_ENABLE
+    int id = 51712;  
+    int ret = 0;    
     init_shfs();
     ret = mount_shfs(&id, 1);   
     if (ret < 0) return 0;
-    do_file("");    
 #endif
-
 #if MICROPY_VFS_FAT
     fs_user_mount_t fs_user_mount;
     memset(MP_STATE_PORT(fs_user_mount), 0, sizeof(MP_STATE_PORT(fs_user_mount)));
@@ -309,35 +327,17 @@ int main(int argc, char **argv) {
       printk("Error while mounting drive: %d\n", res);
       return -1;
     }
-    //do_file("http_server.py");
-    //do_file("testcar.py");
-    do_file("testimport.py");
+
 #endif
-    //do_str("import sys\nimport socket\n");
-    //do_str("f = open('index.html', 'r')\ns = f.read()\nprint(s)\nf.close()\n");
-    //    do_str("import usocket\ns = usocket.socket()\nai = socket.getaddrinfo('0.0.0.0', 8080)\n");
-    //do_str("import lwip\nlwip.reset()\neth = lwip.ether('172.64.0.100', '255.255.255.0', '0.0.0.0')\nwhile 1: eth.poll()\n");
 
-    /* broken "built-in" modules from:
-       http://docs.micropython.org/en/latest/pyboard/library/index.html 
-
-       * non built-in (see builtin.h):
-       unix/moduselect.c
-       unix/modos.c || ./cc3200/mods/moduos.c
-       unix/modsocket.c || ./cc3200/mods/modusocket.c
-       unix/modtime.c || ./cc3200/mods/modutime.c
-
-       * ignored
-       machine, network, pyb
-
-       * need support
-       ussl: missing crypto.h, ssl.h, etc. Enable in mpconfigport.h
-    */
-      
-    /* working modules */
-    //do_str("import cmath\nimport gc\nimport math\nimport ubinascii\nimport ucollections\nimport uhashlib\nimport uheapq\nimport ujson\nimport ure\nimport ustruct\nimport uzlib\nimport uctypes\nimport micropython\nimport sys\nimport urandom\nimport websocket\nprint('Done')\n");
+    /* run something */
+    do_file("testimport.py");
+    //do_str("print('hello world\n')");
+    
+    /* deinit micro-python */
     mp_deinit();
 
+    /* free the heap */
 #if MICROPY_ENABLE_GC && !defined(NDEBUG)
     // We don't really need to free memory since we are about to exit the
     // process, but doing so helps to find memory leaks.
@@ -346,3 +346,5 @@ int main(int argc, char **argv) {
 
     return 0;
 }
+
+
