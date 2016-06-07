@@ -183,7 +183,8 @@ endif
 SRC_MOD += builtin_open.c \
 
 APP_MODS_SRC_C = $(addprefix mods/,\
-	modusocket.c \
+	modusocket.c               \
+	modtime.c                  \
         )
 
 # prepend the build destination prefix to the py object files

@@ -259,8 +259,7 @@ void nlr_jump_fail(void *val) {
   printf("FATAL: uncaught NLR %p\n", val);
   exit(1);
 }
-void pythonpath_append(const char *path) {
-  //    char *path = "lib";
+void pythonpath_append(char *path) {
     mp_uint_t path_num = 1; 
     for (char *p = path; p != NULL; p = strchr(p, PATHLIST_SEP_CHAR)) {
       path_num++;
@@ -303,7 +302,8 @@ int main(int argc, char **argv) {
     /* init micropython */
     mp_init();
 
-    /* append dirs to python path (NO leading slash please) */
+    /* append dirs to python path (NO leading slashes
+     * please, and use ":" as the separator) */
     pythonpath_append("lib");
 
     /* add filesystem support, either SHFS or FAT */
@@ -329,11 +329,11 @@ int main(int argc, char **argv) {
     }
 
 #endif
-
-    /* run something */
-    do_file("testimport.py");
-    //do_str("print('hello world\n')");
     
+    /* run something */
+    //do_file("test_time.py");
+    do_str("print('hello world')");
+	   
     /* deinit micro-python */
     mp_deinit();
 
