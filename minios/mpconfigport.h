@@ -101,7 +101,7 @@
 #define MICROPY_PY_IO_FILEIO        (0)
 #define MICROPY_PY_GC_COLLECT_RETVAL (1)
 #define MICROPY_MODULE_FROZEN_STR   (0)
-#define MICROPY_PY_LWIP             (1)
+#define MICROPY_PY_LWIP             (0)
 #define MICROPY_STACKLESS           (0)
 #define MICROPY_STACKLESS_STRICT    (0)
 
@@ -167,10 +167,12 @@ extern const struct _mp_obj_fun_builtin_t mp_builtin_open_obj;
 extern const struct _mp_obj_module_t mp_module_time;
 extern const struct _mp_obj_module_t mp_module_usocket;
 extern const struct _mp_obj_module_t mp_module_os;
+extern const struct _mp_obj_module_t mp_module_lwip;
 #define MICROPY_PORT_BUILTIN_MODULES \
   { MP_OBJ_NEW_QSTR(MP_QSTR_usocket), (mp_obj_t)&mp_module_usocket }, \
   { MP_ROM_QSTR(MP_QSTR_utime), MP_ROM_PTR(&mp_module_time) }, \
   { MP_ROM_QSTR(MP_QSTR_uos), MP_ROM_PTR(&mp_module_os) }, \
+  { MP_ROM_QSTR(MP_QSTR_lwip), MP_ROM_PTR(&mp_module_lwip) }, \
 
 // type definitions for the specific machine
 // assume that if we already defined the obj repr then we also defined types

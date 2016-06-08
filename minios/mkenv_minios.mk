@@ -154,7 +154,7 @@ endif
 
 ifeq ($(CONFIG_LWIP),y)
 LWIP_ROOT ?= $(realpath ../../toolchain)/x86_64-root/x86_64-xen-elf
-SRC_MOD += ../extmod/modlwip.c ../lib/netutils/netutils.c
+SRC_MOD += ../lib/netutils/netutils.c
 SRC_MOD += $(addprefix $(LWIP_ROOT)/src/lwip/,\
 	core/def.c \
         core/dns.c \
@@ -186,6 +186,7 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	modusocket.c               \
 	modtime.c                  \
         modos.c                    \
+        modlwip.c                  \
         )
 
 # prepend the build destination prefix to the py object files

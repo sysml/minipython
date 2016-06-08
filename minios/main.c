@@ -331,9 +331,9 @@ int main(int argc, char **argv) {
 #endif
     
     /* run something */
-    //do_file("test_time.py");
+    do_file("http_server.py");
     //do_str("print('hello world')");
-    do_str("import utime as time\nstart = time.clock()\nfor x in range(0, 10000000):\n\tpass\nend = time.clock()\nelapsed = end - start\nprint('Time: ' + str(elapsed))");
+    //do_str("import utime as time\nstart = time.clock()\nfor x in range(0, 10000000):\n\tpass\nend = time.clock()\nelapsed = end - start\nprint('Time: ' + str(elapsed))");
 
     /* deinit micro-python */
     mp_deinit();

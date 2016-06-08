@@ -1,4 +1,4 @@
-#include "extmod/modlwip.h"
+#include "modlwip.h"
 #include "py/obj.h"
 #include "lwip/sockets.h"
 

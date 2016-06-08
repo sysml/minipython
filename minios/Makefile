@@ -112,7 +112,7 @@ STUB_APP_OBJS0   += blkdev.o                       \
 endif
 
 ifeq ($(CONFIG_LWIP),y)
-STUB_APP_OBJS0   += ../extmod/modlwip.o            \
+STUB_APP_OBJS0   += mods/modlwip.o                 \
                     ../lib/netutils/netutils.o
 endif
 
