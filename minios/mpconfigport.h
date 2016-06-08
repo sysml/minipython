@@ -166,9 +166,11 @@ extern const struct _mp_obj_fun_builtin_t mp_builtin_open_obj;
 // extra built in modules to add to the list of known ones
 extern const struct _mp_obj_module_t mp_module_time;
 extern const struct _mp_obj_module_t mp_module_usocket;
+extern const struct _mp_obj_module_t mp_module_os;
 #define MICROPY_PORT_BUILTIN_MODULES \
   { MP_OBJ_NEW_QSTR(MP_QSTR_usocket), (mp_obj_t)&mp_module_usocket }, \
   { MP_ROM_QSTR(MP_QSTR_utime), MP_ROM_PTR(&mp_module_time) }, \
+  { MP_ROM_QSTR(MP_QSTR_uos), MP_ROM_PTR(&mp_module_os) }, \
 
 // type definitions for the specific machine
 // assume that if we already defined the obj repr then we also defined types

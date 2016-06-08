@@ -1,5 +1,6 @@
 kernel = "/root/workspace/mini-python/minios/build/mini-python_x86_64.gz"
 memory = "6"
+cpus = ["0"]
 vcpus = "1"
 name = "minipython"
 

@@ -121,6 +121,7 @@ STUB_APP_OBJS0   += $(addprefix ../py/, $(PY_O_BASENAME))
 STUB_APP_OBJS0   += $(addprefix mods/,\
                       modusocket.o    \
 		      modtime.o       \
+		      modos.o         \
                       )
 
 STUB_BUILD_DIRS	 += $(STUBDOM_BUILD_DIR)/lib/utils       \
