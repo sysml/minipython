@@ -59,7 +59,9 @@ STUB_CFLAGS      += -Iinc                          \
                     -I../lib/mp-readline           \
                     -I../stmhal                    \
                     -I$(BUILD)                     \
-		    -I../lib/netutils
+		    -I../lib/netutils              \
+                    -I../lib/timeutils             \
+
 
 ifeq ($(CONFIG_SHFS),y)
 STUB_CFLAGS      += -DSHFS_OPENBYNAME              \
@@ -85,6 +87,7 @@ STUB_APP_OBJS0   := main.o                         \
 		    gccollect.o                    \
                     ../lib/utils/printf.o          \
                     ../lib/utils/pyexec.o          \
+	            ../lib/timeutils/timeutils.o   \
                     ../lib/libc/string0.o          \
                     ../lib/mp-readline/readline.o  \
                     _frozen_mpy.o
@@ -131,6 +134,7 @@ STUB_BUILD_DIRS	 += $(STUBDOM_BUILD_DIR)/lib/utils       \
                     $(STUBDOM_BUILD_DIR)/py              \
                     $(STUBDOM_BUILD_DIR)/extmod          \
                     $(STUBDOM_BUILD_DIR)/lib/netutils    \
+                    $(STUBDOM_BUILD_DIR)/lib/timeutils   \
                     $(STUBDOM_BUILD_DIR)/mini-python/mods
 
 ifeq ($(CONFIG_FATFS),y)
