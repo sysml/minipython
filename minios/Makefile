@@ -24,7 +24,7 @@ PYTHON                   = python
 # console
 CONFIG_CONSFRONT_SYNC   ?= y
 
-## vif
+# vif
 CONFIG_NETFRONT                    = y
 CONFIG_NETFRONT_PERSISTENT_GRANTS ?= y
 CONFIG_NETFRONT_GSO               ?= y
@@ -33,7 +33,7 @@ CONFIG_NETFRONT_POLLTIMEOUT        = 1
 CONFIG_NETFRONT_WAITFORTX         ?= y
 CONFIG_NETFRONT_LWIP_ONLY         ?= y
 
-## lwip
+# lwip
 CONFIG_LWIP                        = y
 CONFIG_LWIP_MINIMAL                = y
 CONFIG_LWIP_NOTHREADS              = y
@@ -42,11 +42,8 @@ CONFIG_LWIP_POOLS_ONLY             = n
 CONFIG_START_NETWORK               = n
 CONFIG_MP_LWIP_DEBUG               = n
 
-## shfs
+# shfs (only if you know what you're doing!)
 CONFIG_SHFS                        = n
-
-## fatfs (disable shfs above if enabled)
-CONFIG_FATFS                       = y
 
 include mkenv_minios.mk
 
@@ -61,16 +58,13 @@ STUB_CFLAGS      += -Iinc                          \
                     -I$(BUILD)                     \
 		    -I../lib/netutils              \
                     -I../lib/timeutils             \
-
+		    -DFATFS_ENABLE                 \
 
 ifeq ($(CONFIG_SHFS),y)
 STUB_CFLAGS      += -DSHFS_OPENBYNAME              \
                     -DSHFS_CACHE_READAHEAD=8       \
 	            -DSHFS_CACHE_GROW              \
 	            -DSHFS_ENABLE
-endif
-ifeq ($(CONFIG_FATFS),y)
-STUB_CFLAGS      += -DFATFS_ENABLE
 endif
 
 ifeq ($(CONFIG_MP_LWIP_DEBUG),y)
@@ -90,17 +84,15 @@ STUB_APP_OBJS0   := main.o                         \
 	            ../lib/timeutils/timeutils.o   \
                     ../lib/libc/string0.o          \
                     ../lib/mp-readline/readline.o  \
-                    _frozen_mpy.o
-
-ifeq ($(CONFIG_FATFS),y)
-STUB_APP_OBJS0   += fatfs_port.o                   \
+                    _frozen_mpy.o                  \
+		    fatfs_port.o                   \
 		    blkdev.o                       \
 		    diskio.o                       \
 		    mempool.o                      \
                     ring.o                         \
 		    hexdump.o                      \
 	            debug.o
-endif
+
 
 ifeq ($(CONFIG_SHFS),y)
 STUB_APP_OBJS0   += blkdev.o                       \
@@ -127,27 +119,27 @@ STUB_APP_OBJS0   += $(addprefix mods/,\
 		      modos.o         \
                       )
 
-STUB_BUILD_DIRS	 += $(STUBDOM_BUILD_DIR)/lib/utils       \
-                    $(STUBDOM_BUILD_DIR)/lib/libc        \
-                    $(STUBDOM_BUILD_DIR)/lib/mp-readline \
-                    $(STUBDOM_BUILD_DIR)/build           \
-                    $(STUBDOM_BUILD_DIR)/py              \
-                    $(STUBDOM_BUILD_DIR)/extmod          \
-                    $(STUBDOM_BUILD_DIR)/lib/netutils    \
-                    $(STUBDOM_BUILD_DIR)/lib/timeutils   \
-                    $(STUBDOM_BUILD_DIR)/mini-python/mods
-
-ifeq ($(CONFIG_FATFS),y)
-STUB_BUILD_DIRS  += $(STUBDOM_BUILD_DIR)/lib/fatfs \
+STUB_BUILD_DIRS	 += $(STUBDOM_BUILD_DIR)/lib/utils        \
+                    $(STUBDOM_BUILD_DIR)/lib/libc         \
+                    $(STUBDOM_BUILD_DIR)/lib/mp-readline  \
+                    $(STUBDOM_BUILD_DIR)/build            \
+                    $(STUBDOM_BUILD_DIR)/py               \
+                    $(STUBDOM_BUILD_DIR)/extmod           \
+                    $(STUBDOM_BUILD_DIR)/lib/netutils     \
+                    $(STUBDOM_BUILD_DIR)/lib/timeutils    \
+                    $(STUBDOM_BUILD_DIR)/mini-python/mods \
+		    $(STUBDOM_BUILD_DIR)/lib/fatfs        \
 		    $(STUBDOM_BUILD_DIR)/lib/fatfs/option
-endif
+
 
 ifeq ($(CONFIG_SHFS),y)
 STUB_BUILD_DIRS  +=  $(STUBDOM_BUILD_DIR)/$(STUBDOM_NAME)/shfs
 endif
 
+# MinOS' Makefile
 include $(MINIOS_ROOT)/stub.mk
-CFLAGS                  += -std=gnu11
+
+CFLAGS           += -std=gnu11
 
 
 ######################################################################

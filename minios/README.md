@@ -44,7 +44,7 @@ Set the default file flag with
 
     /shfs_admin -d [signature] minipython-volume.shfs
 
-If you're using the command do_file and CONFIG_FATFS=y, add a disk:
+If you're using a FAT volume (mini-python's standard FS) add a disk:
 
 disk = [ 'file:/root/workspace/mini-python/minios/mini-python-demo-test.img,xvda,w']
 
