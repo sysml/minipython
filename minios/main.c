@@ -286,7 +286,7 @@ void pythonpath_append(char *path) {
 
 int main(int argc, char **argv) {
   
-    /* mini-python banner */
+    /* minipython banner */
     print_banner();  
 
     /* init stack */

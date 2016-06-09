@@ -2,7 +2,7 @@
 # Mini-OS Definitions
 ######################################################################
 BUILD                  ?= build
-STUBDOM_NAME            = mini-python
+STUBDOM_NAME            = minipython
 STUBDOM_ROOT            = $(realpath .)
 ARCH                    := x86_64
 XEN_TARGET_ARCH         := $(ARCH)
@@ -22,7 +22,7 @@ ECHO                     = @echo
 PYTHON                   = python
 
 # console
-CONFIG_CONSFRONT_SYNC   ?= y
+CONFIG_CONSFRONT_SYNC             ?= y
 
 # vif
 CONFIG_NETFRONT                    = y
@@ -127,7 +127,7 @@ STUB_BUILD_DIRS	 += $(STUBDOM_BUILD_DIR)/lib/utils        \
                     $(STUBDOM_BUILD_DIR)/extmod           \
                     $(STUBDOM_BUILD_DIR)/lib/netutils     \
                     $(STUBDOM_BUILD_DIR)/lib/timeutils    \
-                    $(STUBDOM_BUILD_DIR)/mini-python/mods \
+                    $(STUBDOM_BUILD_DIR)/minipython/mods \
 		    $(STUBDOM_BUILD_DIR)/lib/fatfs        \
 		    $(STUBDOM_BUILD_DIR)/lib/fatfs/option
 
