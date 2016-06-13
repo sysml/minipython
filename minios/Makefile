@@ -75,6 +75,7 @@ STUB_CFLAGS      += -DLWIP_IF_DEBUG                \
 endif
 
 STUB_APP_OBJS0   := main.o                         \
+		    minipython.o                   \
 		    unix_mphal.o                   \
 		    alloc.o                        \
 		    builtin_open.o                 \

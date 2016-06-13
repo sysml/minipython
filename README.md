@@ -25,7 +25,7 @@ To build minipython:
 
 ## Specifying a Python Script
 
-To specify a Python script edit minios/main.c . You have two main options: do\_str(), which allows you to specify a string for your script directly in main.c, and do_file() which retrieves and executes a file from your filesystem; search for examples of these at the bottom of the main() function in main.c (and don't forget to make again if you modify the file).
+To specify a Python script edit the run_script() function in minios/main.c . You have two main options: do\_str(), which allows you to specify a string for your script directly in main.c, and do_file() which retrieves and executes a file from your filesystem.
 
 ## Running
 
@@ -87,7 +87,7 @@ To test it out you can run the HTTP server script provided with the minipython s
 
 	$ cp minios/examples/http_server.py /mnt/fat
 
-Add the line to main.c's main() function (before the call to mp_deinit()):
+Add the line to main.c's run_script() function:
 
 	do_file("http_server.py");
 	
