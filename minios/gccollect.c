@@ -31,6 +31,8 @@
 
 #if MICROPY_ENABLE_GC
 
+extern void mp_unix_mark_exec(void);
+
 // Even if we have specific support for an architecture, it is
 // possible to force use of setjmp-based implementation.
 #if !MICROPY_GCREGS_SETJMP

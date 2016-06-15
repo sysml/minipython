@@ -2,7 +2,6 @@
 
 #define PATHLIST_SEP_CHAR ':'
 
-extern void mp_unix_mark_exec(void);
 extern void run_script(void);
 
 // Command line options, with their defaults
@@ -28,7 +27,7 @@ const mp_print_t mp_stderr_print = {NULL, stderr_print_strn};
 // If exc is SystemExit, return value where FORCED_EXIT bit set,
 // and lower 8 bits are SystemExit value. For all other exceptions,
 // return 1.
-STATIC int handle_uncaught_exception(mp_obj_base_t *exc) {
+int handle_uncaught_exception(mp_obj_base_t *exc) {
     // check for SystemExit
     if (mp_obj_is_subclass_fast(MP_OBJ_FROM_PTR(exc->type), MP_OBJ_FROM_PTR(&mp_type_SystemExit))) {
         // None is an exit value of 0; an int is its value; anything else is 1
@@ -59,7 +58,7 @@ typedef struct _mp_lexer_file_buf_t {
 // Returns standard error codes: 0 for success, 1 for all other errors,
 // except if FORCED_EXIT bit is set then script raised SystemExit and the
 // value of the exit is in the lower 8 bits of the return value
-STATIC int execute_from_lexer(mp_lexer_t *lex, mp_parse_input_kind_t input_kind, bool is_repl) {
+int execute_from_lexer(mp_lexer_t *lex, mp_parse_input_kind_t input_kind, bool is_repl) {
     if (lex == NULL) {
         printf("MemoryError: lexer could not allocate memory\n");
         return 1;
@@ -283,11 +282,8 @@ int main(int argc, char **argv) {
 
 #endif
 
+    /* run user script */
     run_script();
-    /* run something */
-    //do_file("http_server.py");
-    //do_str("print('hello world')");
-    //do_str("import utime as time\nstart = time.clock()\nfor x in range(0, 10000000):\n\tpass\nend = time.clock()\nelapsed = end - start\nprint('Time: ' + str(elapsed))");
 
     /* deinit micro-python */
     mp_deinit();

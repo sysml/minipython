@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <errno.h>
 
+#include "console.h"
 #include "py/mpstate.h"
 #include "py/nlr.h"
 #include "py/compile.h"
@@ -33,9 +34,8 @@ extern mp_lexer_t *fat_vfs_lexer_new_from_file(const char *filename);
 extern mp_import_stat_t fat_vfs_import_stat(const char *path);
 #endif
 
-STATIC void stderr_print_strn(void *env, const char *str, size_t len);
-STATIC int handle_uncaught_exception(mp_obj_base_t *exc);
-STATIC int execute_from_lexer(mp_lexer_t *lex, mp_parse_input_kind_t input_kind, bool is_repl);
+int handle_uncaught_exception(mp_obj_base_t *exc);
+int execute_from_lexer(mp_lexer_t *lex, mp_parse_input_kind_t input_kind, bool is_repl);
 
 #if SHFS_ENABLE
 STATIC mp_uint_t shfs_file_buf_next_byte(mp_lexer_file_buf_t *fb);
