@@ -41,7 +41,6 @@
 #include "lwip/timers.h"
 #include "lwip/tcp.h"
 #include "lwip/udp.h"
-//#include "lwip/raw.h"
 #include "lwip/dns.h"
 #include "lwip/tcp_impl.h"
 #include "lwip/netif.h"
@@ -85,6 +84,7 @@ typedef struct _lwip_ether_obj_t {
 #define ETHER_MAX  5
 STATIC int ether_idx = 0;
 STATIC lwip_ether_obj_t lwip_ether_objs[ETHER_MAX];
+STATIC struct netfrontif lwip_ether_netfrontifs[ETHER_MAX];
 int lwip_find_ip(const char *ip, char *found_ip);
 STATIC const mp_obj_type_t lwip_ether_type;
 
@@ -111,7 +111,9 @@ STATIC mp_obj_t lwip_ether_make_new(mp_obj_t type_in,
   /* Create device */
   lwip_ether_obj_t *ether = &(lwip_ether_objs[ether_idx]);
   ether->base.type = &lwip_ether_type;
-
+  struct netfrontif *nfi = &lwip_ether_netfrontifs[ether_idx];
+  nfi->vif_id = ether_idx;
+  
   if (!ipaddr_aton(mp_obj_str_get_str(args[0]), &ether->ip)) {
     nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "not a valid IP address"));
   }
@@ -126,12 +128,12 @@ STATIC mp_obj_t lwip_ether_make_new(mp_obj_t type_in,
 	    &ether->ip,
 	    &ether->mask,
 	    &ether->gw,
-	    NULL,
+	    nfi,
 	    netfrontif_init,
 	    ethernet_input);
   netif_set_default(&ether->netif);
   netif_set_up(&ether->netif);
-
+  
   /* Get ready for next device */
   ether_idx++;
 
@@ -831,12 +833,14 @@ int lwip_addif(const char *ip) {
     }
     ether->mask = mask;
     ether->gw = gw;    
+    struct netfrontif *nfi = &lwip_ether_netfrontifs[ether_idx];
+    nfi->vif_id = ether_idx;
     
     if (!netif_add(&ether->netif,
 		   &ether->ip,
 		   &ether->mask,
 		   &ether->gw,
-		   NULL,
+		   nfi,
 		   netfrontif_init,
 		   ethernet_input)) {
       return -1;
