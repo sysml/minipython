@@ -70,7 +70,6 @@
 #endif
 
 STATIC bool LWIP_INIT = false;
-STATIC bool LWIP_ETHER_INIT = false;
 
 typedef struct _lwip_ether_obj_t {
   mp_obj_base_t   base;
@@ -81,42 +80,67 @@ typedef struct _lwip_ether_obj_t {
   ip4_addr_t      gw;
 } lwip_ether_obj_t;
 
-// Ether object is unique for now. Possibly can fix this later. FIXME
-STATIC lwip_ether_obj_t lwip_ether_obj;
+
+/* Support for multiple Ethernet objects */
+#define ETHER_MAX  5
+STATIC int ether_idx = 0;
+STATIC lwip_ether_obj_t lwip_ether_objs[ETHER_MAX];
+int lwip_find_ip(const char *ip, char *found_ip);
 STATIC const mp_obj_type_t lwip_ether_type;
 
-STATIC mp_obj_t lwip_ether_make_new(mp_obj_t type_in, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *args) {
-  
+STATIC mp_obj_t lwip_ether_make_new(mp_obj_t type_in,
+				    mp_uint_t n_args,
+				    mp_uint_t n_kw,
+				    const mp_obj_t *args) {
+  /* Arguments check */
   mp_arg_check_num(n_args, n_kw, 3, 3, false);
   
-  lwip_ether_obj.base.type = &lwip_ether_type;
-  
-  if (!ipaddr_aton(mp_obj_str_get_str(args[0]), &lwip_ether_obj.ip)) {
+  /* Check specified IP is one of the VM's devs in the xenstore */
+  char found_ip[256];
+  if (lwip_find_ip(mp_obj_str_get_str(args[0]), found_ip) == -1) {
+    nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Invalid IP specified!"));
+    return NULL;
+  }
+
+  /* Check we haven't exceeded the max number of devs */
+  if (ether_idx >= ETHER_MAX) {
+    nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Max num of Ether interfaces reached!"));
+    return NULL;
+  }
+
+  /* Create device */
+  lwip_ether_obj_t *ether = &(lwip_ether_objs[ether_idx]);
+  ether->base.type = &lwip_ether_type;
+
+  if (!ipaddr_aton(mp_obj_str_get_str(args[0]), &ether->ip)) {
     nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "not a valid IP address"));
   }
-  if (!ipaddr_aton(mp_obj_str_get_str(args[1]), &lwip_ether_obj.mask)) {
+  if (!ipaddr_aton(mp_obj_str_get_str(args[1]), &ether->mask)) {
     nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "not a valid mask"));
   }
-  if (!ipaddr_aton(mp_obj_str_get_str(args[2]), &lwip_ether_obj.gw)) {
+  if (!ipaddr_aton(mp_obj_str_get_str(args[2]), &ether->gw)) {
     nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "not a valid gateway"));
   }
 
-  netif_add(&lwip_ether_obj.netif,
-	    &lwip_ether_obj.ip,
-	    &lwip_ether_obj.mask,
-	    &lwip_ether_obj.gw,
+  netif_add(&ether->netif,
+	    &ether->ip,
+	    &ether->mask,
+	    &ether->gw,
 	    NULL,
 	    netfrontif_init,
 	    ethernet_input);
-  netif_set_default(&lwip_ether_obj.netif);
-  netif_set_up(&lwip_ether_obj.netif);
-  
-  return (mp_obj_t)&lwip_ether_obj;
+  netif_set_default(&ether->netif);
+  netif_set_up(&ether->netif);
+
+  /* Get ready for next device */
+  ether_idx++;
+
+  return (mp_obj_t)ether;
 }
 
-
-STATIC mp_obj_t lwip_ether_poll(mp_obj_t test) {
-  netfrontif_poll(&lwip_ether_obj.netif);
+STATIC mp_obj_t lwip_ether_poll(mp_obj_t e) {
+  lwip_ether_obj_t *ether = (lwip_ether_obj_t*)e;
+  netfrontif_poll(&ether->netif);
   return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(lwip_ether_poll_obj, lwip_ether_poll);
@@ -297,38 +321,9 @@ static const int error_lookup_table[] = {
 #define MOD_NETWORK_SOCK_DGRAM (2)
 #define MOD_NETWORK_SOCK_RAW (3)
 
-/*
-typedef struct _lwip_socket_obj_t {
-    mp_obj_base_t base;
-
-    volatile union {
-        struct tcp_pcb *tcp;
-        struct udp_pcb *udp;
-    } pcb;
-    volatile union {
-        struct pbuf *pbuf;
-        struct tcp_pcb *connection;
-    } incoming;
-    mp_obj_t callback;
-    byte peer[4];
-    mp_uint_t peer_port;
-    mp_uint_t timeout;
-    uint16_t leftover_count;
-
-    uint8_t domain;
-    uint8_t type;
-
-    #define STATE_NEW 0
-    #define STATE_CONNECTING 1
-    #define STATE_CONNECTED 2
-    #define STATE_PEER_CLOSED 3
-    // Negative value is lwIP error
-    int8_t state;
-} lwip_socket_obj_t;
-*/
-
 static inline void poll_sockets(void) {
-    netfrontif_poll(&lwip_ether_obj.netif);
+  for (int i = 0; i < ether_idx; i++)
+    netfrontif_poll(&lwip_ether_objs[i].netif);
 }
 
 /*******************************************************************************/
@@ -810,41 +805,49 @@ int lwip_addif(const char *ip) {
     
     ip4_addr_t mask;
     ip4_addr_t gw;
-    
+
     IP4_ADDR(&mask, 255, 255, 255,   0);
     IP4_ADDR(&gw,     0,   0,   0,   0);
     mask.addr = htonl(IN_CLASSC_NET);
-    
+
+    /* Check max num of devs hasn't been reached */
+    if (ether_idx >= ETHER_MAX) {
+      nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "max num of Ether interfaces reached!"));
+      return -1;
+    }
+
+    /* Make sure given IP is kosher */
     ret = lwip_find_ip(ip, res);
     if (ret == -1) {
       printk("modlwip: Error, could not find or match required ip!\n");
       return -1;
     }
 
-    /* Already added */
-    if (LWIP_ETHER_INIT) return 0;
-
-    lwip_ether_obj.base.type = &lwip_ether_type;
-    if (!ipaddr_aton(res, &lwip_ether_obj.ip)) {
+    /* Create device */
+    lwip_ether_obj_t *ether = &(lwip_ether_objs[ether_idx]);
+    ether->base.type = &lwip_ether_type;
+    if (!ipaddr_aton(res, &ether->ip)) {
       nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "not a valid IP address"));
     }
-
-    lwip_ether_obj.mask = mask;
-    lwip_ether_obj.gw = gw;    
+    ether->mask = mask;
+    ether->gw = gw;    
     
-    if (!netif_add(&lwip_ether_obj.netif,
-		      &lwip_ether_obj.ip,
-		      &lwip_ether_obj.mask,
-		      &lwip_ether_obj.gw,
-		      NULL,
-		      netfrontif_init,
-		      ethernet_input)) {
+    if (!netif_add(&ether->netif,
+		   &ether->ip,
+		   &ether->mask,
+		   &ether->gw,
+		   NULL,
+		   netfrontif_init,
+		   ethernet_input)) {
       return -1;
     }
     
-    netif_set_default(&lwip_ether_obj.netif);
-    netif_set_up(&lwip_ether_obj.netif);
-    LWIP_ETHER_INIT = true;
+    netif_set_default(&ether->netif);
+    netif_set_up(&ether->netif);
+
+    /* Get ready for next device */
+    ether_idx++;
+    
     return 0;
 }
     
