@@ -290,8 +290,15 @@ int main(int argc, char **argv) {
 
 #endif
 
+#if MICROPY_VFS_FAT
+    /* execute boot.py and main.py from mounted FAT-FS
+     * This behavior is described on micropython's wiki */
+    do_file("boot.py");
+    do_file("main.py");
+#else
     /* run user script */
     run_script();
+#endif
 
     /* deinit micro-python */
     mp_deinit();
