@@ -237,7 +237,8 @@ void pythonpath_append(char *path) {
 }
 
 int main(int argc, char **argv) {
-  
+    int i;
+
     /* minipython banner */
     print_banner();  
 
@@ -258,7 +259,14 @@ int main(int argc, char **argv) {
      * please, and use ":" as the separator) */
     pythonpath_append("lib");
 
+    /* initialize sys.argv */
+    mp_obj_list_init(MP_OBJ_TO_PTR(mp_sys_argv), 0);
+    for (i=0; i<argc; ++i) {
+      mp_obj_list_append(mp_sys_argv, MP_OBJ_NEW_QSTR(qstr_from_str(argv[i])));
+    }
+
     /* add filesystem support, either SHFS or FAT */
+    printk("Loading disk..\n");
 #if SHFS_ENABLE
     int id = 51712;  
     int ret = 0;    
