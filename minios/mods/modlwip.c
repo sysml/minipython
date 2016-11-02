@@ -85,22 +85,21 @@ typedef struct _lwip_ether_obj_t {
 STATIC int ether_idx = 0;
 STATIC lwip_ether_obj_t lwip_ether_objs[ETHER_MAX];
 STATIC struct netfrontif lwip_ether_netfrontifs[ETHER_MAX];
-int lwip_find_ip(const char *ip, char *found_ip);
+STATIC int ether_offset_noip = 0;
+STATIC int lwip_find_ip(const char *ip, char *found_ip);
+STATIC int lwip_find_next_noip(int offset);
 STATIC const mp_obj_type_t lwip_ether_type;
 
 STATIC mp_obj_t lwip_ether_make_new(mp_obj_t type_in,
 				    mp_uint_t n_args,
 				    mp_uint_t n_kw,
 				    const mp_obj_t *args) {
+  int vifnum = -1;
+  char _ip_buf[256];
+  const char *found_ip = NULL;
+
   /* Arguments check */
   mp_arg_check_num(n_args, n_kw, 3, 3, false);
-  
-  /* Check specified IP is one of the VM's devs in the xenstore */
-  char found_ip[256];
-  if (lwip_find_ip(mp_obj_str_get_str(args[0]), found_ip) == -1) {
-    nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Invalid IP specified!"));
-    return NULL;
-  }
 
   /* Check we haven't exceeded the max number of devs */
   if (ether_idx >= ETHER_MAX) {
@@ -108,13 +107,39 @@ STATIC mp_obj_t lwip_ether_make_new(mp_obj_t type_in,
     return NULL;
   }
 
+  /* Check specified IP is one of the VM's devs in the xenstore
+   * If args[0] is set to '0.0.0.0', take over the IP set in Xenstore
+   * If no IPs were specified on xenstore, find the first unused one (but reject 0.0.0.0 as a valid argument) */
+  vifnum = lwip_find_ip(mp_obj_str_get_str(args[0]), _ip_buf);
+  found_ip = _ip_buf;
+  if (vifnum < 0) {
+      vifnum = lwip_find_next_noip(ether_offset_noip);
+      if (vifnum < 0) {
+          nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Could not find any suitable interface!"));
+          return NULL;
+      }
+
+      /* Ensure that args[0] is not '0.0.0.0' */
+      found_ip = mp_obj_str_get_str(args[0]);
+      if (strcmp("0.0.0.0", found_ip) == 0) {
+          nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "No suitable interface for address 0.0.0.0 found!"));
+          return NULL;
+      }
+
+      /* increase offset for the next search */
+      ether_offset_noip = vifnum + 1;
+  }
+  ASSERT(vifnum >= 0);
+  ASSERT(found_ip != NULL);
+
   /* Create device */
   lwip_ether_obj_t *ether = &(lwip_ether_objs[ether_idx]);
   ether->base.type = &lwip_ether_type;
   struct netfrontif *nfi = &lwip_ether_netfrontifs[ether_idx];
-  nfi->vif_id = ether_idx;
-  
-  if (!ipaddr_aton(mp_obj_str_get_str(args[0]), &ether->ip)) {
+  nfi->vif_id = vifnum;
+
+  /* FIXME: Revert search parameters for failed */
+  if (!ipaddr_aton(found_ip, &ether->ip)) {
     nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "not a valid IP address"));
   }
   if (!ipaddr_aton(mp_obj_str_get_str(args[1]), &ether->mask)) {
@@ -124,6 +149,7 @@ STATIC mp_obj_t lwip_ether_make_new(mp_obj_t type_in,
     nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "not a valid gateway"));
   }
 
+  printk("Initialize vif %d with %s\n", vifnum, found_ip);
   netif_add(&ether->netif,
 	    &ether->ip,
 	    &ether->mask,
@@ -733,7 +759,7 @@ int lwip_xenbus_read_integer(const char *path)
  * function resturns -1. If the ip is something other than 0.0.0.0, the
  * function checks to see if there's a vif with an IP that matches it and
  * returns 0 on success and -1 on failure */
-int lwip_find_ip(const char *ip, char *found_ip) {
+STATIC int lwip_find_ip(const char *ip, char *found_ip) {
   char path[256];
   char *msg, *res;
   int n_vifs, id, i, ret;
@@ -798,6 +824,60 @@ int lwip_find_ip(const char *ip, char *found_ip) {
   }
 
   return -1;
+}
+
+/* Searches through the domain's available vifs to check for an vif without
+ * an IP set. It returns the vif id of the first vif found.
+ * The first vif to be first looked at can be specified by offset
+ * The function returns the -1 if no more vifs were found */
+STATIC int lwip_find_next_noip(int offset) {
+  char path[256];
+  char *msg, *res;
+  int n_vifs, id, i, ret;
+
+  /* Get dom ID */
+  snprintf(path, sizeof(path), "domid");
+  id = lwip_xenbus_read_integer("domid");
+  if (id == -1) {
+    printk("modlwip: Could not retrieve dom id from Xenstore!\n");
+    return -1;
+  }
+
+  /* Find out how many vifs the domain has */
+  n_vifs = 0;
+  while (1) {
+    snprintf(path, sizeof(path), "/local/domain/0/backend/vif/%d/%d", id, n_vifs);
+    ret = lwip_xenbus_read_integer(path);
+    if (ret == -1)
+      break;
+    n_vifs++;
+  }
+
+  /* We use dir only to know how many vifs there are. For each
+   * we check if an entry "ip" exists. If it does we skip the interface
+   */
+  for (i = offset; i <= n_vifs; i++) {
+
+    /* See if this vif has an ip entry */
+    snprintf(path,
+	     sizeof(path),
+	     "/local/domain/0/backend/vif/%d/%d/ip",
+	     id,
+	     i);
+    msg = xenbus_read(XBT_NIL, path, &res);
+
+    if (!msg) {
+        /* It does, so we skip this interface */
+        free(msg);
+	free(res);
+        continue;
+    } else {
+        /* We don't free res since xenbus_read sets it to NULL on error */
+        free(msg);
+        return i;
+    }
+  }
+  return -1; /* no more interfaces */
 }
 
 /* Assumes mask is /24 and gw 0.0.0.0 */
