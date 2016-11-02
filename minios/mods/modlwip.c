@@ -138,7 +138,7 @@ STATIC mp_obj_t lwip_ether_make_new(mp_obj_t type_in,
   struct netfrontif *nfi = &lwip_ether_netfrontifs[ether_idx];
   nfi->vif_id = vifnum;
 
-  /* FIXME: Revert search parameters for failed */
+  /* FIXME: Revert search state  & search offset for failed argument parsing */
   if (!ipaddr_aton(found_ip, &ether->ip)) {
     nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "not a valid IP address"));
   }
@@ -149,6 +149,7 @@ STATIC mp_obj_t lwip_ether_make_new(mp_obj_t type_in,
     nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "not a valid gateway"));
   }
 
+  /* FIXME: Ensure that there is no vif with specified IP already initialized */
   printk("Initialize vif %d with %s\n", vifnum, found_ip);
   netif_add(&ether->netif,
 	    &ether->ip,
