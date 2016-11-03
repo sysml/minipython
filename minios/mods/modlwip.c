@@ -182,7 +182,7 @@ STATIC lwip_ether_obj_t *lwip_addif(const ip4_addr_t *ip,
     return (mp_obj_t) obj;
 }
 
-STATIC mp_obj_t lwip_ether_make_new(mp_obj_t type_in,
+STATIC mp_obj_t lwip_ether_make_new(const mp_obj_type_t *type_in,
 				    mp_uint_t n_args,
 				    mp_uint_t n_kw,
 				    const mp_obj_t *args) {
@@ -410,7 +410,7 @@ static inline void exec_user_callback(lwip_socket_obj_t *socket) {
 
 // Callback for incoming UDP packets. We simply stash the packet and the source address,
 // in case we need it for recvfrom.
-STATIC void _lwip_udp_incoming(void *arg, struct udp_pcb *upcb, struct pbuf *p, ip_addr_t *addr, u16_t port) {
+STATIC void _lwip_udp_incoming(void *arg, struct udp_pcb *upcb, struct pbuf *p, const ip_addr_t *addr, u16_t port) {
     lwip_socket_obj_t *socket = (lwip_socket_obj_t*)arg;
 
     if (socket->incoming.pbuf != NULL) {
