@@ -79,33 +79,16 @@ typedef struct _lwip_ether_obj_t {
   ip4_addr_t        ip;
   ip4_addr_t        mask;
   ip4_addr_t        gw;
-  int               refc;
 } lwip_ether_obj_t;
 
 STATIC const mp_obj_type_t lwip_ether_type;
 
-static lwip_ether_obj_t lwip_ether_objs[ETHER_MAX] = {{ .refc = 0 }};
+static lwip_ether_obj_t lwip_ether_objs[ETHER_MAX];
 static int lwip_ether_objs_count = 0;
 
 STATIC int lwip_find_ip(const char *ip, char *found_ip);
 STATIC int lwip_find_next_noip(int offset);
-STATIC lwip_ether_obj_t *lwip_existing_ip(const ip4_addr_t *ip, const ip4_addr_t *mask);
 STATIC lwip_ether_obj_t *lwip_addif(const ip4_addr_t *ip, const ip4_addr_t *mask, const ip4_addr_t *gw);
-
-STATIC lwip_ether_obj_t *lwip_existing_ip(const ip4_addr_t *ip, const ip4_addr_t *mask) {
-    int i;
-
-    /* check if there exists already an interface with this address (Note: ignores gw) */
-    for (i=0; i<lwip_ether_objs_count; ++i) {
-        if (lwip_ether_objs[i].refc >= 1 &&
-            ip4_addr_cmp(&lwip_ether_objs[i].ip,   ip) &&
-            ip4_addr_cmp(&lwip_ether_objs[i].mask, mask)) {
-            return (mp_obj_t) &lwip_ether_objs[i];
-        }
-    }
-
-    return NULL;
-}
 
 STATIC lwip_ether_obj_t *lwip_addif(const ip4_addr_t *ip,
                                     const ip4_addr_t *mask,
@@ -174,7 +157,6 @@ STATIC lwip_ether_obj_t *lwip_addif(const ip4_addr_t *ip,
     if (lwip_ether_objs_count == 0)
         netif_set_default(&obj->netif);
     netif_set_up(&obj->netif);
-    obj->refc = 1;
 
     /* Get ready for next device */
     ++lwip_ether_objs_count;
@@ -798,6 +780,38 @@ int lwip_xenbus_read_integer(const char *path)
   return t;
 }
 
+STATIC int lwip_address_bindable(const ip_addr_t *ip)
+{
+    int i;
+
+    if (ip4_addr_islinklocal(ip))
+        return 1; /* local addresses are always fine to bind */
+
+    if (lwip_ether_objs_count == 0)
+        return 0; /* no vif installed currently -> we cannot bind anything else */
+
+    if (ip4_addr_isany_val(*ip))
+        return 1; /* since we have at least one interface, we are able to bind ANY to it */
+
+    if (ip4_addr_ismulticast(ip))
+        return 1; /* since we have at least one interface, we are able to bind a multicast address to it */
+
+    /* check if addr is a broadcast address of a already known vif */
+    for (i=0; i<lwip_ether_objs_count; ++i) {
+        if (ip4_addr_isbroadcast(ip, &lwip_ether_objs[i].netif))
+            return 1; /* a broadcast address is fine to be bind */
+    }
+
+    /* check if there exists already an interface with this address */
+    for (i=0; i<lwip_ether_objs_count; ++i) {
+        if (ip4_addr_cmp(&lwip_ether_objs[i].ip, ip))
+            return 1; /* great! it is an interface address */
+    }
+
+    return 0; /**/
+}
+
+
 /* Searches through the domain's available vifs to check for a given ip
  * address. If the ip is 0.0.0.0, res will be set to the ip address of
  * the first vif for which an ip is set; if no vif has an ip set then the
@@ -943,14 +957,11 @@ mp_obj_t lwip_socket_bind(mp_obj_t self_in, mp_obj_t addr_in) {
     IP4_ADDR(&bind_mask, 255,255,255,0);
     IP4_ADDR(&bind_gw, 0,0,0,0);
 
-    if (((ip4_addr_isany_val(bind_addr) &&
-         (lwip_ether_objs_count == 0)) ||
-        !lwip_existing_ip(&bind_addr, &bind_mask)) &&
 
-        /* there is no suitable interface yet added for doing the socket bind,
-         * we will try to add (another) one */
-
-        (!lwip_addif(&bind_addr, &bind_mask, &bind_mask))) {
+    /* If there is no suitable interface yet added for doing the socket bind,
+     * we will try to add (another) one */
+    if ((!lwip_address_bindable(&bind_addr)) &&
+        (!lwip_addif(&bind_addr, &bind_mask, &bind_gw))) {
         printk("modlwip: Error while implicitly adding interface!\n");
         return NULL;
     }
