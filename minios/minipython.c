@@ -266,7 +266,7 @@ int main(int argc, char **argv) {
     }
 
     /* add filesystem support, either SHFS or FAT */
-    printk("Loading disk..\n");
+    printk("Loading disk...\n");
 #if SHFS_ENABLE
     int id = 51712;  
     int ret = 0;    
@@ -290,15 +290,7 @@ int main(int argc, char **argv) {
 
 #endif
 
-#if MICROPY_VFS_FAT
-    /* execute boot.py and main.py from mounted FAT-FS
-     * This behavior is described on micropython's wiki */
-    do_file("boot.py");
-    do_file("main.py");
-#else
-    /* run user script */
     run_script();
-#endif
 
     /* deinit micro-python */
     mp_deinit();

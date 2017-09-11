@@ -1,20 +1,40 @@
 # Minipython
 
-Minipython is a Xen virtual machine able to run Python scripts. It consists of MicroPython (https://github.com/micropython/micropython) running on top of the Xen paravirtualized MiniOS operating system.
+Minipython is a Xen-based unikernel to run Python scripts. It consists of MicroPython (https://github.com/micropython/micropython) running on top of the Xen paravirtualized Mini-OS operating system (https://wiki.xenproject.org/wiki/Mini-OS).
 
 ## Building
 
-Clone the minipython repo, then:
+Clone the Xen sources, the toolstack, Mini-OS and Minipython:
 
-	$ cd micropython
-	$ git submodule init
-	$ git submodule update
+      $ git clone git://xenbits.xen.org/xen.git
+      $ git clone https://github.com/sysml/mini-os.git
+      $ git clone https://github.com/sysml/toolchain.git
+      $ git clone https://github.com/sysml/minipython.git
 
-Next, edit minipython's Makefile (found in minios/Makefile) and set the paths to the Xen sources, the Xen toolchain sources and the MiniOS sources:
+Check out a stable version of the Xen sources:
 
-    XEN_ROOT                ?= $(realpath ../../[XENSRCS])
-    TOOLCHAIN_ROOT          ?= $(realpath ../../[XENTOOLCHAIN)
-    MINIOS_ROOT             ?= $(realpath ../../[MINIOS])
+      $ cd xen
+      $ git checkout stable-4.9
+      $ cd ..
+
+Set up environment variables:
+
+       $ export XEN_ROOT=$(pwd)/xen
+       $ export TOOLCHAIN_ROOT=$(pwd)/toolchain
+       $ export MINIOS_ROOT=$(pwd)/mini-os
+
+Prepare to build Minipython:
+
+       $ cd minipython/micropython
+       $ git submodule init
+       $ git submodule update
+       $ cd ..
+
+Next, edit minipython's Makefile (found in minios/Makefile) and set the paths to the Xen sources, the Xen toolchain sources and the Mini-OS sources:
+
+    XEN_ROOT                ?= $(realpath ../../xen)
+    TOOLCHAIN_ROOT          ?= $(realpath ../../toolchain)
+    MINIOS_ROOT             ?= $(realpath ../../mini-os)
 
 There are a number of options at the top of that Makefile that you can also set. For instance, by default, networking via lwip is enabled.
 
@@ -31,13 +51,14 @@ To specify a Python script edit the run_script() function in minios/main.c . You
 
 The minipython VM can be simply run with
 
-	$ xl create -c minipython.xen
+     $ cd minios
+     $ xl create -c minipython.xen
 	
 Before this will work though we need to set up a filesystem and networking (the latter is only needed if the Makefile has networking enabled; by default it is). 
 
 ### Filesystem
 
-Minipython uses FAT as its default filesystem type. Assuming your FAT volume is called minipython-fat.img, first mount it with:
+Minipython uses FAT as its default filesystem type. To get you started, you can use the demo filesystem in this sources (filesystems/minipython-demo-fatfs.img) which contains a few basic scripts. First mount it with:
 
 	$ losetup /dev/loop0 minipython-fat.img
 	$ kpartx -a /dev/loop0

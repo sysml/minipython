@@ -1,10 +1,10 @@
 kernel = "build/minipython_x86_64.gz"
-memory = "6"
+memory = "16"
 cpus = ["0"]
 vcpus = "1"
 name = "minipython"
 
-vif  = [ 'mac=00:11:22:33:44:55,bridge=vhostonly0,ip=172.64.0.100' ]
+vif  = [ 'mac=00:11:22:33:44:55,bridge=minipythonbr,ip=10.0.1.1' ]
 disk = ['phy:/dev/loop0,xvda,w']
 
 on_poweroff = "preserve"
