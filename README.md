@@ -58,11 +58,15 @@ Before this will work though we need to set up a filesystem and networking (the 
 
 ### Filesystem
 
-Minipython uses FAT as its default filesystem type. To get you started, you can use the demo filesystem in these sources (filesystems/minipython-demo-fatfs.img) which contains a few basic scripts. First mount it with:
+Minipython uses FAT as its default filesystem type. To get you started, you can use the demo filesystem in these sources (filesystems/minipython-demo-fatfs.img) which contains a few basic scripts. First uncompress it with:
+
+	$ gzip -d minipython-demo-fatfs.img.gz
+
+Then mount it:
 
 	$ losetup /dev/loop0 filesystems/minipython-demo-fatfs.img
 	$ kpartx -a /dev/loop0
-	$ mkdir /mnt/fat
+	$ mkdir -p /mnt/fat
 	$ mount /dev/mapper/loop0p1 /mnt/fat/
 
 Finally specify a disk in minios/minipython.xen (the version of this file in these sources already has this line):
