@@ -34,7 +34,6 @@
  * TO USE THIS PROGRAM, EVEN IF NEC Europe Ltd. HAS BEEN ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGES.
  *
- *     THIS HEADER MAY NOT BE EXTRACTED OR MODIFIED IN ANY WAY.
  */
 /*
  * Parts of this code is derived/copied from FreeBSD's buf_ring.h:
